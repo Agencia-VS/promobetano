@@ -1,0 +1,80 @@
+/*
+ * Paleta y tipografías de campaña — muestreadas del panel de mall y la carta
+ * del perfume (brief §Sistema de marca). Manda esta paleta, no la del repo del
+ * concurso anterior.
+ *
+ * Sin Tailwind: estaba instalado, importado y con un bloque @theme completo sin
+ * que se usara una sola clase de utilidad (los estilos son objetos inline), y
+ * aportaba ~9 KB de preflight y utilidades inalcanzables, más 34 custom
+ * properties --tw-* sobre *, ::before, ::after y ::backdrop.
+ *
+ * OJO: --font-title vivía SOLO dentro de ese bloque @theme y tiene 18
+ * consumidores; ahora está definido acá abajo, en :root.
+ */
+:root {
+  --color-confianza: #ff3900;
+  --color-bone: #f9f1e9;
+  --color-ink: #0a0605;
+  --color-rust: #8a3c18;
+  --color-rust-deep: #3c0000;
+
+  --font-title: var(--font-mdn), "MD Nichrome", system-ui, sans-serif;
+  --font-body: var(--font-haffer), "Haffer", system-ui, -apple-system, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-ink);
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--color-bone);
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * Los enlaces van en crema subrayada, no en el naranja de marca: el naranja es
+ * también el fondo de las tres pantallas, así que la regla anterior pintaba
+ * naranja sobre naranja y obligaba a cada enlace a sobreescribirla inline.
+ */
+a {
+  color: var(--color-bone);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-bone);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
