@@ -1,64 +1,57 @@
-/** Wordmark «Eau de Confianza», recoloreable vía CSS mask (sin SVG vectorial todavía — brief §Qué falta 10). */
+import Image from "next/image";
+
+/*
+ * Los logos pasaron de CSS `mask-image` a next/image. El mask tenía tres
+ * problemas:
+ *
+ * 1. `background: color` se pinta primero y el mask solo lo recorta, así que si
+ *    el PNG fallaba (deploy sin el archivo, mask no soportado) el usuario veía
+ *    un RECTÁNGULO BLANCO SÓLIDO sobre el naranja — y `aria-label` seguía
+ *    anunciando la marca, de modo que ningún chequeo automático lo detectaba.
+ * 2. La URL vivía en un atributo `style` inline, invisible para el preload
+ *    scanner: el wordmark es el elemento LCP de la portada y su request no
+ *    arrancaba hasta que React montaba el div.
+ * 3. Quedaba fuera de next/image, sin AVIF/WebP ni srcset, sirviendo un PNG de
+ *    4000px para una caja de 124px.
+ *
+ * `sizes` declara el ancho real de render para que el optimizador entregue la
+ * variante chica y no la intrínseca.
+ */
+
+const LOCKUP = { src: "/brand/lockup.png", w: 1245, h: 544 };
+const BETANO = { src: "/brand/betano-horizontal.png", w: 4000, h: 1049 };
+
 export function Lockup({
   width,
-  height,
-  color = "#FFFFFF",
+  priority = false,
   style,
 }: {
   width: number;
-  height: number;
-  color?: string;
+  priority?: boolean;
   style?: React.CSSProperties;
 }) {
   return (
-    <div
-      role="img"
-      aria-label="Eau de Confianza"
-      style={{
-        width,
-        height,
-        background: color,
-        maskImage: "url(/brand/lockup.png)",
-        maskSize: "contain",
-        maskRepeat: "no-repeat",
-        maskPosition: "center",
-        WebkitMaskImage: "url(/brand/lockup.png)",
-        WebkitMaskSize: "contain",
-        WebkitMaskRepeat: "no-repeat",
-        WebkitMaskPosition: "center",
-        ...style,
-      }}
+    <Image
+      src={LOCKUP.src}
+      alt="Eau de Confianza"
+      width={LOCKUP.w}
+      height={LOCKUP.h}
+      priority={priority}
+      sizes={`${width}px`}
+      style={{ width, maxWidth: "100%", height: "auto", ...style }}
     />
   );
 }
 
-/** Isotipo horizontal de Betano, recoloreable igual que el lockup. */
-export function BetanoLogo({
-  width,
-  height,
-  color = "#FFFFFF",
-}: {
-  width: number;
-  height: number;
-  color?: string;
-}) {
+export function BetanoLogo({ width }: { width: number }) {
   return (
-    <div
-      role="img"
-      aria-label="Betano"
-      style={{
-        width,
-        height,
-        background: color,
-        maskImage: "url(/brand/betano-horizontal.png)",
-        maskSize: "contain",
-        maskRepeat: "no-repeat",
-        maskPosition: "left center",
-        WebkitMaskImage: "url(/brand/betano-horizontal.png)",
-        WebkitMaskSize: "contain",
-        WebkitMaskRepeat: "no-repeat",
-        WebkitMaskPosition: "left center",
-      }}
+    <Image
+      src={BETANO.src}
+      alt="Betano"
+      width={BETANO.w}
+      height={BETANO.h}
+      sizes={`${width}px`}
+      style={{ width, maxWidth: "100%", height: "auto" }}
     />
   );
 }

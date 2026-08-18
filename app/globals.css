@@ -1,9 +1,15 @@
-@import "tailwindcss";
-
 /*
- * Paleta de campaña — muestreada del panel de mall y la carta del perfume
- * (brief §Sistema de marca · Paleta de campaña). Distinta de los tokens del
- * repo del concurso anterior; esta es la que manda para Eau de Confianza.
+ * Paleta y tipografías de campaña — muestreadas del panel de mall y la carta
+ * del perfume (brief §Sistema de marca). Manda esta paleta, no la del repo del
+ * concurso anterior.
+ *
+ * Sin Tailwind: estaba instalado, importado y con un bloque @theme completo sin
+ * que se usara una sola clase de utilidad (los estilos son objetos inline), y
+ * aportaba ~9 KB de preflight y utilidades inalcanzables, más 34 custom
+ * properties --tw-* sobre *, ::before, ::after y ::backdrop.
+ *
+ * OJO: --font-title vivía SOLO dentro de ese bloque @theme y tiene 18
+ * consumidores; ahora está definido acá abajo, en :root.
  */
 :root {
   --color-confianza: #ff3900;
@@ -11,21 +17,15 @@
   --color-ink: #0a0605;
   --color-rust: #8a3c18;
   --color-rust-deep: #3c0000;
-  --color-white: #ffffff;
 
-  --font-display: var(--font-mdn), "MD Nichrome", system-ui, sans-serif;
+  --font-title: var(--font-mdn), "MD Nichrome", system-ui, sans-serif;
   --font-body: var(--font-haffer), "Haffer", system-ui, -apple-system, sans-serif;
 }
 
-@theme inline {
-  --color-confianza: var(--color-confianza);
-  --color-bone: var(--color-bone);
-  --color-ink: var(--color-ink);
-  --color-rust: var(--color-rust);
-  --color-rust-deep: var(--color-rust-deep);
-  --color-white: var(--color-white);
-  --font-title: var(--font-display);
-  --font-sans: var(--font-body);
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
 html,
@@ -41,29 +41,40 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/*
+ * Los enlaces van en crema subrayada, no en el naranja de marca: el naranja es
+ * también el fondo de las tres pantallas, así que la regla anterior pintaba
+ * naranja sobre naranja y obligaba a cada enlace a sobreescribirla inline.
+ */
 a {
-  color: var(--color-confianza);
+  color: var(--color-bone);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 input,
 button,
-textarea {
+textarea,
+select {
   font: inherit;
 }
 
-::placeholder {
-  color: rgba(10, 6, 5, 0.38);
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-bone);
+  outline-offset: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  * {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
-}
-
-:focus-visible {
-  outline: 2px solid var(--color-confianza);
-  outline-offset: 2px;
 }

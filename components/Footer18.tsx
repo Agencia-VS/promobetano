@@ -1,55 +1,40 @@
 import type { ReactNode } from "react";
+import { Badge18 } from "./Badge18";
 
 /**
- * Banda negra de pie, a sangre en los bordes de la pantalla: márgenes
- * negativos que cancelan exactamente el padding lateral/inferior del
- * contenedor que la envuelve (mismo valor, signo opuesto) — no un div de
- * relleno, que fue el bug real que partía la franja naranja a la mitad.
- * `sidePad`/`bottomPad` deben calzar con el padding del contenedor padre.
+ * Banda negra de pie, a sangre. Cancela el padding de Screen leyendo sus
+ * custom properties, sin que ninguna página tenga que repetir el número.
+ *
+ * El padding inferior suma env(safe-area-inset-bottom): con viewport-fit=cover
+ * el link legal obligatorio caía dentro de la franja del gesto del home
+ * indicator en iPhone, donde iOS intercepta los toques.
  */
 export function Footer18({
   children,
-  topGap,
-  sidePad,
-  bottomPad = 46,
+  topGap = 0,
 }: {
   children: ReactNode;
-  topGap: number;
-  sidePad: number;
-  bottomPad?: number;
+  topGap?: number;
 }) {
   return (
     <div
       style={{
-        margin: `${topGap}px -${sidePad}px -${bottomPad}px`,
+        marginTop: "auto",
+        marginInline: "calc(var(--screen-pad-x) * -1)",
+        marginBottom: "calc(var(--screen-pad-b) * -1)",
+        paddingTop: 20 + topGap,
+        paddingInline: "var(--screen-pad-x)",
+        paddingBottom: "calc(32px + env(safe-area-inset-bottom))",
         display: "flex",
         alignItems: "center",
         gap: 12,
-        padding: `20px ${sidePad}px 32px`,
         background: "var(--color-ink)",
         fontSize: 11.5,
         lineHeight: 1.5,
         color: "rgba(249,241,233,.75)",
       }}
     >
-      <span
-        style={{
-          flexShrink: 0,
-          width: 30,
-          height: 30,
-          border: "1px solid rgba(255,255,255,.6)",
-          borderRadius: "50%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontFamily: "var(--font-title)",
-          fontWeight: 800,
-          fontSize: 11,
-          color: "#FFFFFF",
-        }}
-      >
-        18+
-      </span>
+      <Badge18 size={30} />
       <span>{children}</span>
     </div>
   );

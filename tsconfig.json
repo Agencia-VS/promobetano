@@ -6,6 +6,9 @@
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
+    // Los imports internos de lib/ llevan extensión .ts para que el runner de
+    // pruebas de Node (ESM estricto) los resuelva sin un bundler.
+    "allowImportingTsExtensions": true,
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",

@@ -1,143 +1,94 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { Screen } from "@/components/Screen";
 import { Lockup } from "@/components/Lockup";
 import { Footer18 } from "@/components/Footer18";
-import { GateOverlay } from "@/components/GateOverlay";
-import { PersistOrigen } from "@/components/PersistOrigen";
-import { ORIGEN_DEFAULT, origenNombre } from "@/lib/origen";
+import { InfoBadge } from "@/components/InfoBadge";
+import { HEADER_ORIGEN, ORIGEN_DIRECTO, etiquetaPanel } from "@/lib/origen";
 
-export default async function PortadaPage({
-  searchParams,
-}: PageProps<"/i">) {
-  const params = await searchParams;
-  const p = params.p;
-  const slug = (Array.isArray(p) ? p[0] : p) || ORIGEN_DEFAULT;
+export default async function PortadaPage() {
+  const h = await headers();
+  const origen = h.get(HEADER_ORIGEN) ?? ORIGEN_DIRECTO;
 
   return (
-    <Screen variant="portada">
-      <PersistOrigen slug={slug} />
-      <div
+    <Screen variant="portada" padTop={66} padX={26}>
+      <Lockup
+        width={268}
+        priority
+        style={{ margin: "34px auto 8px", display: "block" }}
+      />
+
+      <h1
         style={{
-          position: "relative",
-          flex: 1,
-          boxSizing: "border-box",
-          padding: "66px 26px 46px",
-          display: "flex",
-          flexDirection: "column",
-          gap: 26,
-        }}
-      >
-        <Lockup
-          width={268}
-          height={118}
-          style={{ margin: "34px 0 8px", alignSelf: "center" }}
-        />
-
-        <h1
-          style={{
-            margin: 0,
-            fontFamily: "var(--font-title)",
-            fontWeight: 800,
-            fontSize: 25,
-            lineHeight: 1.06,
-            letterSpacing: ".055em",
-            textTransform: "uppercase",
-            color: "#FFFFFF",
-            textWrap: "pretty",
-          }}
-        >
-          Hay un aroma para el momento en que decides confiar en ti
-        </h1>
-
-        <p style={{ margin: 0, fontSize: 15.5, lineHeight: 1.65, color: "#FFFFFF", maxWidth: "32ch" }}>
-          Un perfume único en su tipo, elaborado con aromas científicamente
-          comprobados para hacerte sentir más seguro.
-        </p>
-
-        <div style={{ marginTop: "auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          <InfoBadge label="Sorteo" value="Fecha por definir" pending title="Pendiente §Qué falta 01–02" />
-          <InfoBadge label="Estás en" value={origenNombre(slug)} pending title="Pendiente §Qué falta 05" />
-        </div>
-
-        <Link
-          href={`/inscripcion?p=${encodeURIComponent(slug)}`}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            height: 56,
-            background: "var(--color-ink)",
-            color: "var(--color-bone)",
-            fontFamily: "var(--font-title)",
-            fontWeight: 800,
-            fontSize: 15.5,
-            letterSpacing: ".16em",
-            textTransform: "uppercase",
-            borderRadius: 3,
-            boxShadow: "0 12px 32px rgba(60,0,0,.35)",
-            textDecoration: "none",
-          }}
-        >
-          Confía y dale
-        </Link>
-
-        <Footer18 topGap={10} sidePad={26}>
-          Juega con responsabilidad. Solo mayores de 18 años.{" "}
-          <a href="/bases" style={{ color: "#FFFFFF", textDecoration: "underline", textUnderlineOffset: 2 }}>
-            Bases y condiciones
-          </a>
-        </Footer18>
-      </div>
-
-      <GateOverlay />
-    </Screen>
-  );
-}
-
-function InfoBadge({
-  label,
-  value,
-  pending,
-  title,
-}: {
-  label: string;
-  value: string;
-  pending?: boolean;
-  title?: string;
-}) {
-  return (
-    <div
-      style={{
-        border: "1px solid rgba(60,0,0,.4)",
-        background: "rgba(60,0,0,.3)",
-        padding: "11px 12px",
-        display: "flex",
-        flexDirection: "column",
-        gap: 5,
-      }}
-    >
-      <span
-        style={{
+          margin: "26px 0 0",
           fontFamily: "var(--font-title)",
-          fontSize: 10,
-          letterSpacing: ".26em",
+          fontWeight: 800,
+          fontSize: 25,
+          lineHeight: 1.06,
+          letterSpacing: ".055em",
           textTransform: "uppercase",
           color: "#FFFFFF",
+          textWrap: "pretty",
         }}
       >
-        {label}
-      </span>
-      <span
-        title={title}
+        Hay un aroma para el momento en que decides confiar en ti
+      </h1>
+
+      <p
         style={{
-          fontSize: 13.5,
+          margin: "26px 0 0",
+          fontSize: 15.5,
+          lineHeight: 1.65,
           color: "#FFFFFF",
-          borderBottom: pending ? "1px dashed rgba(255,255,255,.5)" : undefined,
-          alignSelf: "flex-start",
+          maxWidth: "32ch",
         }}
       >
-        {value}
-      </span>
-    </div>
+        Un perfume único en su tipo, elaborado con aromas científicamente
+        comprobados para hacerte sentir más seguro.
+      </p>
+
+      <div
+        style={{
+          marginTop: "auto",
+          paddingTop: 26,
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 8,
+        }}
+      >
+        {/* TODO(§Qué falta 01–02): fecha del sorteo. */}
+        <InfoBadge label="Sorteo" value="Fecha por definir" pending />
+        {/* TODO(§Qué falta 05): lista de paneles en lib/origen.ts. */}
+        <InfoBadge label="Estás en" value={etiquetaPanel(origen)} pending />
+      </div>
+
+      <Link
+        href="/inscripcion"
+        style={{
+          marginTop: 26,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: 56,
+          background: "var(--color-ink)",
+          color: "var(--color-bone)",
+          fontFamily: "var(--font-title)",
+          fontWeight: 800,
+          fontSize: 15.5,
+          letterSpacing: ".16em",
+          textTransform: "uppercase",
+          borderRadius: 3,
+          boxShadow: "0 12px 32px rgba(60,0,0,.35)",
+          textDecoration: "none",
+        }}
+      >
+        Confía y dale
+      </Link>
+
+      <Footer18 topGap={10}>
+        Juega con responsabilidad. Solo mayores de 18 años.{" "}
+        <Link href="/bases">Bases y condiciones</Link>
+      </Footer18>
+    </Screen>
   );
 }

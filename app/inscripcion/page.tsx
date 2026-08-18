@@ -1,12 +1,14 @@
+import { headers } from "next/headers";
 import { FormularioInscripcion } from "@/components/FormularioInscripcion";
-import { ORIGEN_DEFAULT } from "@/lib/origen";
+import { HEADER_ORIGEN, ORIGEN_DIRECTO } from "@/lib/origen";
 
-export default async function InscripcionPage({
-  searchParams,
-}: PageProps<"/inscripcion">) {
-  const params = await searchParams;
-  const p = params.p;
-  const slug = (Array.isArray(p) ? p[0] : p) || ORIGEN_DEFAULT;
-
-  return <FormularioInscripcion origenInicial={slug} />;
+/**
+ * El origen lo resuelve proxy.ts (la URL manda sobre la cookie) y llega por
+ * header. Antes esta página parseaba el ?p= por su cuenta y el cliente leía la
+ * cookie con la precedencia invertida.
+ */
+export default async function InscripcionPage() {
+  const h = await headers();
+  const origen = h.get(HEADER_ORIGEN) ?? ORIGEN_DIRECTO;
+  return <FormularioInscripcion origen={origen} />;
 }

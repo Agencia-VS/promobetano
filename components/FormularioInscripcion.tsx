@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Screen } from "./Screen";
 import { BetanoLogo } from "./Lockup";
 import { Footer18 } from "./Footer18";
+import { Badge18 } from "./Badge18";
+import { Campo, Casilla, bordeCampo, inputStyle } from "./Campo";
 import { formateaRut } from "@/lib/rut";
 import {
   VALORES_INICIALES,
@@ -12,309 +14,385 @@ import {
   guardaDraft,
   leeDraft,
   valida,
+  validaCampo,
+  type CampoTexto,
   type InscripcionErrors,
   type InscripcionValues,
 } from "@/lib/inscripcion";
-import { leeOrigenCookie } from "@/lib/origen";
+import { guardaConfirmado } from "@/lib/confirmado";
+import { CORREO_DATOS } from "@/lib/contacto";
 
-type Estado = "idle" | "sending" | "ok";
+const CAMPOS_TEXTO: CampoTexto[] = ["nombre", "email", "tel", "rut"];
+const DEBOUNCE_MS = 400;
 
-const labelStyle: React.CSSProperties = {
-  fontFamily: "var(--font-title)",
-  fontSize: 10.5,
-  letterSpacing: ".22em",
-  textTransform: "uppercase",
-  color: "#FFFFFF",
-};
-
-const inputStyle = (invalid: boolean): React.CSSProperties => ({
-  height: 52,
-  boxSizing: "border-box",
-  padding: "0 14px",
-  fontSize: 16.5,
-  color: "var(--color-ink)",
-  background: "var(--color-bone)",
-  borderRadius: 4,
-  border: `1px solid ${invalid ? "var(--color-rust-deep)" : "rgba(10,6,5,.22)"}`,
-  outline: "none",
-  width: "100%",
-});
-
-const errorStyle: React.CSSProperties = {
-  fontSize: 12.5,
-  fontWeight: 500,
-  color: "var(--color-rust-deep)",
-};
-
-export function FormularioInscripcion({ origenInicial }: { origenInicial: string }) {
+export function FormularioInscripcion({ origen }: { origen: string }) {
   const router = useRouter();
-  // Lazy initializer, no efecto: en SSR `leeDraft()` no encuentra
-  // localStorage y cae a los valores vacíos; el cliente lo corrige al
-  // hidratar. React no avisa por un mismatch de `value` en inputs
-  // controlados, así que no hay parpadeo que resolver aquí.
-  const [v, setV] = useState<InscripcionValues>(() => leeDraft() ?? VALORES_INICIALES);
+  // El borrador solo trae campos de texto; el consentimiento parte siempre en
+  // false, así que las casillas coinciden entre servidor y cliente.
+  const [v, setV] = useState<InscripcionValues>(
+    () => leeDraft() ?? VALORES_INICIALES,
+  );
   const [e, setE] = useState<InscripcionErrors>({});
-  const [tocado, setTocado] = useState(false);
-  const [estado, setEstado] = useState<Estado>("idle");
+  const [enviando, setEnviando] = useState(false);
 
+  const pendiente = useRef<InscripcionValues | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const guardaYa = useCallback(() => {
+    if (timer.current !== null) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+    if (pendiente.current) {
+      guardaDraft(pendiente.current);
+      pendiente.current = null;
+    }
+  }, []);
+
+  /*
+   * El borrador se guardaba en cada tecla: 67 escrituras sincrónicas a
+   * localStorage por llenado, serializando 11 KB para persistir 170 B, en plena
+   * ruta de latencia de tecleo. Con debounce son ~6, y el flush en pagehide /
+   * visibilitychange lo hace MÁS seguro que antes, porque la versión anterior
+   * no guardaba nada al irse la app a segundo plano.
+   */
   useEffect(() => {
-    if (tocado) guardaDraft(v);
-  }, [v, tocado]);
+    const alOcultar = () => {
+      if (document.visibilityState === "hidden") guardaYa();
+    };
+    window.addEventListener("pagehide", guardaYa);
+    document.addEventListener("visibilitychange", alOcultar);
+    return () => {
+      window.removeEventListener("pagehide", guardaYa);
+      document.removeEventListener("visibilitychange", alOcultar);
+      guardaYa();
+    };
+  }, [guardaYa]);
 
-  function set<K extends keyof InscripcionValues>(k: K, val: InscripcionValues[K]) {
-    setV((s) => ({ ...s, [k]: val }));
-    setTocado(true);
-    setEstado("idle");
+  // /listo no se alcanza con <Link>, así que sin prefetch su payload RSC se
+  // descargaba recién al enviar, sobre la red del mall.
+  useEffect(() => {
+    router.prefetch("/listo");
+  }, [router]);
+
+  /** Limpia el error de un campo en cuanto el usuario lo corrige. */
+  function revalida(
+    previos: InscripcionErrors,
+    k: keyof InscripcionValues,
+    siguiente: InscripcionValues,
+  ): InscripcionErrors {
+    const next = { ...previos };
+    if (CAMPOS_TEXTO.includes(k as CampoTexto) && previos[k as CampoTexto]) {
+      const msg = validaCampo(k as CampoTexto, siguiente);
+      if (msg) next[k as CampoTexto] = msg;
+      else delete next[k as CampoTexto];
+    }
+    if ((k === "edad" || k === "bases") && previos.legal) {
+      if (siguiente.edad && siguiente.bases) delete next.legal;
+    }
+    return next;
   }
 
-  function borde(k: keyof InscripcionErrors) {
-    return Boolean(e[k]);
+  function set<K extends keyof InscripcionValues>(
+    k: K,
+    val: InscripcionValues[K],
+  ) {
+    const siguiente = { ...v, [k]: val };
+    setV(siguiente);
+    // El consentimiento nunca se persiste (ver lib/inscripcion.ts).
+    pendiente.current = siguiente;
+    if (timer.current !== null) clearTimeout(timer.current);
+    timer.current = setTimeout(guardaYa, DEBOUNCE_MS);
+    setE((previos) => revalida(previos, k, siguiente));
   }
 
-  async function enviar(ev: React.FormEvent) {
+  function enviar(ev: React.FormEvent) {
     ev.preventDefault();
+    // Guard de reentrancia: antes `set()` reseteaba el estado a "idle" y los
+    // campos no se deshabilitaban, así que una edición dentro de la ventana de
+    // envío reactivaba el botón y aceptaba un segundo submit con datos rancios.
+    if (enviando) return;
+
     const errores = valida(v);
     if (Object.keys(errores).length) {
       setE(errores);
-      setTocado(true);
       return;
     }
     setE({});
-    setTocado(true);
-    setEstado("sending");
+    setEnviando(true);
 
-    // Sin backend en este entorno: se simula el encolado (brief §Cuello 1 ·
-    // Correo — el alta responde sin esperar al envío del correo) y se pasa
-    // a /listo. En el sistema real esto es un insert + outbox.
-    const origen = leeOrigenCookie() || origenInicial;
-    await new Promise((r) => setTimeout(r, 700));
-    try {
-      sessionStorage.setItem(
-        "edc_confirmado",
-        JSON.stringify({ email: v.email.trim(), origen })
-      );
-    } catch {
-      // sessionStorage no disponible: /listo cae a su copy genérico.
-    }
+    // Sin backend todavía: se registra la confirmación para /listo y se navega.
+    // Cuando exista el insert + outbox del brief, va acá dentro con su ruta de
+    // error (el estado "error" y el reintento aún no existen porque nada puede
+    // fallar; ver README).
+    guardaConfirmado({ email: v.email.trim(), origen });
+    pendiente.current = null;
     borraDraft();
-    setEstado("ok");
     router.push("/listo");
   }
 
   return (
-    <Screen variant="formulario">
-      <div
-        style={{
-          position: "relative",
-          flex: 1,
-          boxSizing: "border-box",
-          padding: "60px 24px 46px",
-          display: "flex",
-          flexDirection: "column",
-          gap: 22,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
-          <BetanoLogo width={124} height={30} />
-          <span
-            style={{
-              flexShrink: 0,
-              width: 28,
-              height: 28,
-              border: "1px solid rgba(255,255,255,.6)",
-              borderRadius: "50%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontFamily: "var(--font-title)",
-              fontWeight: 800,
-              fontSize: 10.5,
-              color: "#FFFFFF",
-            }}
-          >
-            18+
-          </span>
+    <Screen variant="formulario" padTop={60} padX={24}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 16,
+          }}
+        >
+          <BetanoLogo width={124} />
+          <Badge18 size={28} />
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <span style={{ fontFamily: "var(--font-title)", fontSize: 10.5, letterSpacing: ".3em", textTransform: "uppercase", color: "#FFFFFF" }}>
+          <span
+            style={{
+              fontFamily: "var(--font-title)",
+              fontSize: 10.5,
+              letterSpacing: ".3em",
+              textTransform: "uppercase",
+              color: "#FFFFFF",
+            }}
+          >
             Inscripción
           </span>
-          <h1 style={{ margin: 0, fontFamily: "var(--font-title)", fontWeight: 800, fontSize: 27, lineHeight: 1.04, letterSpacing: ".05em", textTransform: "uppercase", color: "#FFFFFF" }}>
+          <h1
+            style={{
+              margin: 0,
+              fontFamily: "var(--font-title)",
+              fontWeight: 800,
+              fontSize: 27,
+              lineHeight: 1.04,
+              letterSpacing: ".05em",
+              textTransform: "uppercase",
+              color: "#FFFFFF",
+            }}
+          >
             Deja tus datos y entra al sorteo
           </h1>
-          <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.6, color: "#FFFFFF" }}>
+          <p
+            style={{
+              margin: 0,
+              fontSize: 14.5,
+              lineHeight: 1.6,
+              color: "#FFFFFF",
+            }}
+          >
             Un minuto y listo. La confirmación te llega al correo.
           </p>
         </div>
 
-        <form onSubmit={enviar} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-          <Campo label="Nombre y apellido" htmlFor="f-nombre" error={e.nombre}>
-            <input
-              id="f-nombre"
-              type="text"
-              autoComplete="name"
-              autoCapitalize="words"
-              value={v.nombre}
-              onChange={(ev) => set("nombre", ev.target.value)}
-              placeholder="Como aparece en tu carnet"
-              style={inputStyle(borde("nombre"))}
-            />
-          </Campo>
+        <form onSubmit={enviar}>
+          {/* El fieldset deshabilitado congela TODO el formulario durante el
+              envío, no solo el botón. */}
+          <fieldset
+            disabled={enviando}
+            style={{
+              border: 0,
+              margin: 0,
+              padding: 0,
+              minWidth: 0,
+              display: "flex",
+              flexDirection: "column",
+              gap: 18,
+            }}
+          >
+            <Campo name="nombre" label="Nombre y apellido" error={e.nombre}>
+              {(c) => (
+                <input
+                  {...c}
+                  type="text"
+                  autoComplete="name"
+                  autoCapitalize="words"
+                  value={v.nombre}
+                  onChange={(ev) => set("nombre", ev.target.value)}
+                  placeholder="Como aparece en tu carnet"
+                  style={inputStyle(Boolean(e.nombre))}
+                />
+              )}
+            </Campo>
 
-          <Campo label="Correo" htmlFor="f-email" error={e.email}>
-            <input
-              id="f-email"
-              type="email"
-              inputMode="email"
-              autoComplete="email"
-              autoCapitalize="off"
-              spellCheck={false}
-              value={v.email}
-              onChange={(ev) => set("email", ev.target.value)}
-              placeholder="tu@correo.cl"
-              style={inputStyle(borde("email"))}
-            />
-          </Campo>
+            <Campo name="email" label="Correo" error={e.email}>
+              {(c) => (
+                <input
+                  {...c}
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  value={v.email}
+                  onChange={(ev) => set("email", ev.target.value)}
+                  placeholder="tu@correo.cl"
+                  style={inputStyle(Boolean(e.email))}
+                />
+              )}
+            </Campo>
 
-          <Campo label="Teléfono" htmlFor="f-tel" error={e.tel}>
+            <Campo name="tel" label="Teléfono" error={e.tel}>
+              {(c) => (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    background: "var(--color-bone)",
+                    borderRadius: 4,
+                    border: bordeCampo(Boolean(e.tel)),
+                    overflow: "hidden",
+                  }}
+                >
+                  <span
+                    aria-hidden
+                    style={{
+                      padding: "0 12px 0 14px",
+                      fontSize: 16.5,
+                      color: "rgba(10,6,5,.5)",
+                      borderRight: "1px solid rgba(10,6,5,.18)",
+                      lineHeight: "50px",
+                    }}
+                  >
+                    +56 9
+                  </span>
+                  <input
+                    {...c}
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    value={v.tel}
+                    onChange={(ev) => set("tel", ev.target.value)}
+                    placeholder="1234 5678"
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      height: 50,
+                      padding: "0 14px",
+                      fontSize: 16.5,
+                      color: "var(--color-ink)",
+                      background: "transparent",
+                      border: "none",
+                      outline: "none",
+                    }}
+                  />
+                </div>
+              )}
+            </Campo>
+
+            <Campo name="rut" label="RUT" error={e.rut}>
+              {(c) => (
+                <input
+                  {...c}
+                  type="text"
+                  // inputMode="text" y no "numeric": con el teclado numérico no
+                  // se puede escribir la K del dígito verificador.
+                  inputMode="text"
+                  autoCapitalize="characters"
+                  autoComplete="off"
+                  value={v.rut}
+                  onChange={(ev) => set("rut", ev.target.value)}
+                  onBlur={(ev) => set("rut", formateaRut(ev.target.value))}
+                  placeholder="12.345.678-5"
+                  style={{
+                    ...inputStyle(Boolean(e.rut)),
+                    letterSpacing: ".02em",
+                  }}
+                />
+              )}
+            </Campo>
+
             <div
               style={{
                 display: "flex",
-                alignItems: "center",
-                background: "var(--color-bone)",
-                borderRadius: 4,
-                border: `1px solid ${borde("tel") ? "var(--color-rust-deep)" : "rgba(10,6,5,.22)"}`,
-                overflow: "hidden",
+                flexDirection: "column",
+                gap: 4,
+                paddingTop: 4,
+                borderTop: "1px solid rgba(60,0,0,.3)",
               }}
             >
-              <span style={{ padding: "0 12px 0 14px", fontSize: 16.5, color: "rgba(10,6,5,.5)", borderRight: "1px solid rgba(10,6,5,.18)", lineHeight: "50px" }}>
-                +56 9
-              </span>
-              <input
-                id="f-tel"
-                type="tel"
-                inputMode="tel"
-                autoComplete="tel"
-                value={v.tel}
-                onChange={(ev) => set("tel", ev.target.value)}
-                placeholder="1234 5678"
-                style={{ flex: 1, minWidth: 0, height: 50, padding: "0 14px", fontSize: 16.5, color: "var(--color-ink)", background: "transparent", border: "none", outline: "none" }}
-              />
-            </div>
-          </Campo>
-
-          <Campo label="RUT" htmlFor="f-rut" error={e.rut}>
-            <input
-              id="f-rut"
-              type="text"
-              inputMode="text"
-              autoCapitalize="characters"
-              autoComplete="off"
-              value={v.rut}
-              onChange={(ev) => set("rut", ev.target.value)}
-              onBlur={(ev) => set("rut", formateaRut(ev.target.value))}
-              placeholder="12.345.678-5"
-              style={{ ...inputStyle(borde("rut")), letterSpacing: ".02em" }}
-            />
-          </Campo>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 4, paddingTop: 4, borderTop: "1px solid rgba(60,0,0,.3)" }}>
-            <label style={{ display: "flex", alignItems: "flex-start", gap: 12, minHeight: 48, padding: "12px 0", cursor: "pointer" }}>
-              <input
-                type="checkbox"
+              <Casilla
                 checked={v.edad}
-                onChange={(ev) => set("edad", ev.target.checked)}
-                style={{ width: 22, height: 22, margin: 0, flexShrink: 0, accentColor: "var(--color-ink)" }}
-              />
-              <span style={{ fontSize: 13.5, lineHeight: 1.45, color: "#FFFFFF" }}>Tengo 18 años o más.</span>
-            </label>
-            <label style={{ display: "flex", alignItems: "flex-start", gap: 12, minHeight: 48, padding: "12px 0", cursor: "pointer", borderTop: "1px solid rgba(60,0,0,.18)" }}>
-              <input
-                type="checkbox"
-                checked={v.bases}
-                onChange={(ev) => set("bases", ev.target.checked)}
-                style={{ width: 22, height: 22, margin: 0, flexShrink: 0, accentColor: "var(--color-ink)" }}
-              />
-              <span style={{ fontSize: 13.5, lineHeight: 1.45, color: "#FFFFFF" }}>
-                Acepto las{" "}
-                <a href="/bases" style={{ color: "#FFFFFF", textDecoration: "underline", textUnderlineOffset: 2 }}>
-                  bases
-                </a>{" "}
-                y el tratamiento de mis datos para este sorteo.
-              </span>
-            </label>
-            {e.legal && <span role="alert" style={{ ...errorStyle, paddingBottom: 6 }}>{e.legal}</span>}
-            <label style={{ display: "flex", alignItems: "flex-start", gap: 12, minHeight: 48, padding: "12px 0", cursor: "pointer", borderTop: "1px solid rgba(60,0,0,.18)" }}>
-              <input
-                type="checkbox"
-                checked={v.mkt}
-                onChange={(ev) => set("mkt", ev.target.checked)}
-                style={{ width: 22, height: 22, margin: 0, flexShrink: 0, accentColor: "var(--color-ink)" }}
-              />
-              <span style={{ fontSize: 13.5, lineHeight: 1.45, color: "#FFFFFF" }}>
-                Quiero recibir promociones de Betano.{" "}
-                <span style={{ color: "rgba(255,255,255,.72)" }}>Opcional.</span>
-              </span>
-            </label>
-          </div>
+                onChange={(x) => set("edad", x)}
+                describedBy={e.legal ? "legal-error" : undefined}
+              >
+                Tengo 18 años o más.
+              </Casilla>
+              <div style={{ borderTop: "1px solid rgba(60,0,0,.18)" }}>
+                <Casilla
+                  checked={v.bases}
+                  onChange={(x) => set("bases", x)}
+                  describedBy={e.legal ? "legal-error" : undefined}
+                >
+                  Acepto las <a href="/bases">bases</a> y el tratamiento de mis
+                  datos para este sorteo.
+                </Casilla>
+              </div>
+              {e.legal && (
+                <span
+                  id="legal-error"
+                  role="alert"
+                  style={{
+                    fontSize: 12.5,
+                    fontWeight: 500,
+                    color: "var(--color-rust-deep)",
+                    paddingBottom: 6,
+                  }}
+                >
+                  {e.legal}
+                </span>
+              )}
+              {/* La Ley 21.719 exige consentimiento específico por finalidad:
+                  esta casilla va separada, opcional y nunca preseleccionada. */}
+              <div style={{ borderTop: "1px solid rgba(60,0,0,.18)" }}>
+                <Casilla checked={v.mkt} onChange={(x) => set("mkt", x)}>
+                  Quiero recibir promociones de Betano.{" "}
+                  <span style={{ color: "rgba(255,255,255,.72)" }}>
+                    Opcional.
+                  </span>
+                </Casilla>
+              </div>
+            </div>
 
-          <button
-            type="submit"
-            disabled={estado === "sending"}
-            style={{
-              height: 56,
-              background: "var(--color-ink)",
-              color: "var(--color-bone)",
-              border: "none",
-              borderRadius: 3,
-              fontFamily: "var(--font-title)",
-              fontWeight: 800,
-              fontSize: 15.5,
-              letterSpacing: ".16em",
-              textTransform: "uppercase",
-              cursor: estado === "sending" ? "default" : "pointer",
-              boxShadow: "0 12px 32px rgba(60,0,0,.35)",
-              opacity: estado === "sending" ? 0.7 : 1,
-            }}
-          >
-            {estado === "sending" ? "Inscribiendo…" : estado === "ok" ? "Listo, quedaste dentro" : "Confía y dale"}
-          </button>
+            <button
+              type="submit"
+              style={{
+                height: 56,
+                background: "var(--color-ink)",
+                color: "var(--color-bone)",
+                border: "none",
+                borderRadius: 3,
+                fontFamily: "var(--font-title)",
+                fontWeight: 800,
+                fontSize: 15.5,
+                letterSpacing: ".16em",
+                textTransform: "uppercase",
+                cursor: enviando ? "default" : "pointer",
+                boxShadow: "0 12px 32px rgba(60,0,0,.35)",
+                opacity: enviando ? 0.7 : 1,
+              }}
+            >
+              {enviando ? "Inscribiendo…" : "Confía y dale"}
+            </button>
 
-          <p style={{ margin: 0, fontSize: 12, lineHeight: 1.55, color: "#FFFFFF" }}>
-            Guardamos lo que escribes en tu teléfono. Si se cae la señal, no pierdes nada.
-          </p>
+            <p
+              style={{
+                margin: 0,
+                fontSize: 12,
+                lineHeight: 1.55,
+                color: "#FFFFFF",
+              }}
+            >
+              Guardamos lo que escribes en tu teléfono por 20 minutos. Si se cae
+              la señal, no pierdes nada.
+            </p>
+          </fieldset>
         </form>
-
-        <Footer18 topGap={8} sidePad={24}>
-          Juega con responsabilidad. Consultas de datos personales:{" "}
-          <a href="mailto:datos@dominio.cl" style={{ color: "#FFFFFF", textDecoration: "underline", textUnderlineOffset: 2 }}>
-            datos@dominio.cl
-          </a>
-        </Footer18>
       </div>
-    </Screen>
-  );
-}
 
-function Campo({
-  label,
-  htmlFor,
-  error,
-  children,
-}: {
-  label: string;
-  htmlFor?: string;
-  error?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-      <label htmlFor={htmlFor} style={labelStyle}>
-        {label}
-      </label>
-      {children}
-      {error && <span role="alert" style={errorStyle}>{error}</span>}
-    </div>
+      <Footer18 topGap={8}>
+        Juega con responsabilidad. Consultas de datos personales:{" "}
+        <a href={`mailto:${CORREO_DATOS}`}>{CORREO_DATOS}</a>
+      </Footer18>
+    </Screen>
   );
 }
