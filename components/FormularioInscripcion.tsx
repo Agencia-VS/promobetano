@@ -48,7 +48,19 @@ function mensajeDeFalla(codigo: unknown): string {
  * de errores es la forma más segura de que dentro de un mes uno de los dos
  * valide distinto que el otro.
  */
-export function FormularioInscripcion({ origen }: { origen: string }) {
+export function FormularioInscripcion({
+  origen,
+  alExito,
+}: {
+  origen: string;
+  /**
+   * Si viene, se llama en vez de navegar a /listo. Es lo que permite que el
+   * modal de escritorio cambie a "quedaste dentro" en su sitio: navegar cerraba
+   * el modal y mandaba a la pantalla completa, que es exactamente lo que un
+   * modal existe para evitar.
+   */
+  alExito?: (email: string) => void;
+}) {
   const router = useRouter();
   // El borrador solo trae campos de texto; el consentimiento parte siempre en
   // false, así que las casillas coinciden entre servidor y cliente.
@@ -167,11 +179,20 @@ export function FormularioInscripcion({ origen }: { origen: string }) {
       });
 
       if (r.ok) {
-        guardaConfirmado({ email: v.email.trim(), origen });
+        const correo = v.email.trim();
+        // Se guarda igual aunque no naveguemos: si después abre /listo por
+        // historial o por el enlace de otro dispositivo, la pantalla tiene que
+        // poder decirle a qué correo se mandó la confirmación.
+        guardaConfirmado({ email: correo, origen });
         pendiente.current = null;
         borraDraft();
-        // Sin apagar `enviando`: la navegación desmonta el componente y
-        // reactivar el botón acá solo abre una ventana para un segundo submit.
+        // Sin apagar `enviando`: tanto la navegación como el cambio de
+        // contenido del modal desmontan este componente, y reactivar el botón
+        // acá solo abre una ventana para un segundo submit.
+        if (alExito) {
+          alExito(correo);
+          return;
+        }
         router.push("/listo");
         return;
       }

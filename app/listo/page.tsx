@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Screen } from "@/components/Screen";
 import { Footer18 } from "@/components/Footer18";
 import { InfoBadge } from "@/components/InfoBadge";
+import { PasosPerfume, SelloConfirmado } from "@/components/Confirmacion";
 import { leeConfirmadoAhora, useConfirmado } from "@/lib/confirmado";
 import { CORREO_DATOS } from "@/lib/contacto";
 
@@ -28,7 +29,17 @@ export default function ListoPage() {
    * inscribió.
    */
   useEffect(() => {
-    if (leeConfirmadoAhora() === null) router.replace("/inscripcion");
+    /*
+     * Se expulsa a /i y no a /inscripcion. Con la ruta interceptora en juego,
+     * una navegación de cliente a /inscripcion abre el MODAL, y acá el modal se
+     * pintaría sobre una pantalla que se está desmontando: quien nunca se
+     * inscribió vería un formulario flotando sobre nada.
+     *
+     * La portada es además el destino correcto para alguien que llegó a /listo
+     * por un marcador o por el historial: ve la campaña y decide, en vez de
+     * aterrizar en un formulario sin contexto.
+     */
+    if (leeConfirmadoAhora() === null) router.replace("/i");
   }, [router]);
 
   return (
@@ -36,106 +47,11 @@ export default function ListoPage() {
       variant="listo"
       padTop={62}
       padX={26}
-      poster={
-        <div
-          className="bloque-centrado-movil"
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 20,
-            padding: "24px 0 8px",
-          }}
-        >
-          <span
-            aria-hidden
-            style={{
-              width: 60,
-              height: 60,
-              border: "1px solid rgba(255,255,255,.7)",
-              borderRadius: "50%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 24,
-              color: "#FFFFFF",
-              flexShrink: 0,
-            }}
-          >
-            ✓
-          </span>
-          <h1
-            style={{
-              margin: 0,
-              fontFamily: "var(--font-title)",
-              fontWeight: 800,
-              fontSize: "clamp(30px, 3.4vw, 46px)",
-              lineHeight: 1.04,
-              letterSpacing: ".06em",
-              textTransform: "uppercase",
-              color: "#FFFFFF",
-            }}
-          >
-            Quedaste dentro
-          </h1>
-          <p
-            style={{
-              margin: 0,
-              fontSize: "clamp(15px, 1.1vw, 17.5px)",
-              lineHeight: 1.6,
-              color: "#FFFFFF",
-              maxWidth: "34ch",
-            }}
-          >
-            {confirmado ? (
-              <>
-                Te mandamos la confirmación a{" "}
-                <strong style={{ fontWeight: 500 }}>{confirmado.email}</strong>.
-                Llega en menos de un minuto.
-              </>
-            ) : (
-              "Te mandamos la confirmación a tu correo. Llega en menos de un minuto."
-            )}
-          </p>
-        </div>
-      }
+      poster={<SelloConfirmado email={confirmado?.email} />}
       accion={
         <>
-          <div
-            style={{
-              marginTop: 24,
-              background: "var(--color-ink)",
-              padding: "22px 20px",
-              display: "flex",
-              flexDirection: "column",
-              gap: 18,
-              boxShadow: "0 14px 36px rgba(60,0,0,.4)",
-            }}
-          >
-            <span
-              style={{
-                fontFamily: "var(--font-title)",
-                fontSize: 10.5,
-                letterSpacing: ".3em",
-                textTransform: "uppercase",
-                color: "var(--color-confianza)",
-              }}
-            >
-              Si te lo ganas, así se usa
-            </span>
-            <ol
-              style={{
-                margin: 0,
-                padding: 0,
-                listStyle: "none",
-                display: "flex",
-                flexDirection: "column",
-                gap: 14,
-              }}
-            >
-              <Paso n="01">Abre la botella.</Paso>
-              <Paso n="02">Susúrrate: «tú puedes».</Paso>
-              <Paso n="03">Échate bastante y con confianza.</Paso>
-            </ol>
+          <div style={{ marginTop: 24 }}>
+            <PasosPerfume />
           </div>
 
           <div
@@ -173,26 +89,5 @@ export default function ListoPage() {
         </Footer18>
       }
     />
-  );
-}
-
-function Paso({ n, children }: { n: string; children: React.ReactNode }) {
-  return (
-    <li style={{ display: "flex", alignItems: "baseline", gap: 14 }}>
-      <span
-        style={{
-          fontFamily: "var(--font-title)",
-          fontWeight: 800,
-          fontSize: 13,
-          color: "var(--color-confianza)",
-          minWidth: 18,
-        }}
-      >
-        {n}
-      </span>
-      <span style={{ fontSize: 15, lineHeight: 1.5, color: "var(--color-bone)" }}>
-        {children}
-      </span>
-    </li>
   );
 }

@@ -171,8 +171,11 @@ console.log("\n=== 6. /listo: guard + sin hydration mismatch ===");
   // visita directa sin inscribirse -> debe expulsar
   await p.goto(B + "/listo", { waitUntil: "networkidle" });
   await p.waitForTimeout(700);
-  check(new URL(p.url()).pathname === "/inscripcion", `visita directa a /listo redirige (${new URL(p.url()).pathname})`);
-  // ahora inscribiendose de verdad
+  // Expulsa a la portada, no al formulario: una navegacion de cliente a
+  // /inscripcion abriria el modal sobre una pantalla que se desmonta.
+  check(new URL(p.url()).pathname === "/i", `visita directa a /listo redirige (${new URL(p.url()).pathname})`);
+  // ahora inscribiendose de verdad, por navegacion dura (sin modal)
+  await p.goto(B + "/inscripcion", { waitUntil: "networkidle" });
   await p.fill("#f-nombre", "Ana Perez");
   await p.fill("#f-email", "ana@correo.cl");
   await p.fill("#f-tel", "87654321");
@@ -314,7 +317,70 @@ console.log("\n=== 10. Fallo del alta y reintento ===");
   await ctx.close();
 }
 
-console.log("\n=== 11. Doble submit ===");
+console.log("\n=== 11. Modal desde la portada ===");
+{
+  // El CTA de la portada abre el formulario como modal SIN salir de la pagina,
+  // pero cambiando la URL: es lo que permite cerrar con el boton atras.
+  const { ctx, p } = await nueva();
+  await p.goto(B + "/edad?next=%2Fi", { waitUntil: "domcontentloaded" });
+  await p.getByRole("button", { name: /tengo 18/i }).click();
+  await p.waitForURL("**/i", { timeout: 5000 });
+  await p.getByRole("link", { name: /dale/i }).click();
+  await p.waitForSelector("#f-nombre", { timeout: 8000 });
+
+  check(new URL(p.url()).pathname === "/inscripcion", `abrir el modal cambia la URL (${new URL(p.url()).pathname})`);
+  check((await p.locator(".modal-panel").count()) > 0, "se pinta como modal, no como pagina");
+
+  await p.fill("#f-nombre", "Ana Perez");
+  await p.fill("#f-email", "ana@correo.cl");
+  await p.fill("#f-tel", "87654321");
+  await p.fill("#f-rut", "12.345.678-5");
+  await p.locator("input[type=checkbox]").nth(0).check();
+  await p.locator("input[type=checkbox]").nth(1).check();
+  await p.click("button[type=submit]");
+  await p.waitForTimeout(900);
+
+  // Lo que se pidio: el modal cambia a "quedaste dentro" EN SU SITIO.
+  check(new URL(p.url()).pathname === "/inscripcion", `el exito NO navega a otra pantalla (${new URL(p.url()).pathname})`);
+  check((await p.locator("text=Quedaste dentro").count()) > 0, "el modal cambia a 'quedaste dentro'");
+  check((await p.locator("text=ana@correo.cl").count()) > 0, "muestra el correo real en el modal");
+  check((await p.locator(".modal-panel").count()) > 0, "sigue siendo el modal, no la pantalla completa");
+
+  await p.getByRole("button", { name: /^listo$/i }).click();
+  await p.waitForTimeout(700);
+  check(new URL(p.url()).pathname === "/i", `cerrar devuelve a la portada (${new URL(p.url()).pathname})`);
+  check((await p.locator(".modal-panel").count()) === 0, "el modal queda cerrado");
+  await ctx.close();
+}
+
+{
+  // El boton atras del navegador cierra el modal en vez de salir del sitio:
+  // eso es lo que el modal sin URL del repo anterior no podia dar.
+  const { ctx, p } = await nueva();
+  await p.goto(B + "/edad?next=%2Fi", { waitUntil: "domcontentloaded" });
+  await p.getByRole("button", { name: /tengo 18/i }).click();
+  await p.waitForURL("**/i", { timeout: 5000 });
+  await p.getByRole("link", { name: /dale/i }).click();
+  await p.waitForSelector("#f-nombre", { timeout: 8000 });
+  await p.goBack();
+  await p.waitForTimeout(700);
+  check(new URL(p.url()).pathname === "/i", `el boton atras cierra el modal (${new URL(p.url()).pathname})`);
+  await ctx.close();
+}
+
+{
+  // Visita directa: la MISMA URL tiene que dar el formulario completo, sin
+  // modal. Es la razon de usar rutas interceptoras y no un estado local.
+  const { ctx, p } = await nueva();
+  await p.goto(B + "/edad?next=%2Finscripcion", { waitUntil: "domcontentloaded" });
+  await p.getByRole("button", { name: /tengo 18/i }).click();
+  await p.waitForURL("**/inscripcion", { timeout: 5000 });
+  check((await p.locator(".modal-panel").count()) === 0, "una visita directa da la pantalla completa, no el modal");
+  check((await p.locator("#f-nombre").count()) > 0, "y el formulario esta ahi igual");
+  await ctx.close();
+}
+
+console.log("\n=== 12. Doble submit ===");
 {
   const { ctx, p } = await nueva();
   await p.goto(B + "/edad", { waitUntil: "domcontentloaded" });
