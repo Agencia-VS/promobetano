@@ -226,7 +226,7 @@
     display: block;
     position: absolute;
     inset: 0;
-    opacity: var(--fondo-opacidad, 0.9);
+    opacity: var(--fondo-opacidad, 0.42);
   }
 
   /*
@@ -237,11 +237,11 @@
    * consentir. Acá manda la legibilidad.
    */
   .pantalla--formulario {
-    --fondo-opacidad: 0.14;
+    --fondo-opacidad: 0.1;
   }
 
   .pantalla--listo {
-    --fondo-opacidad: 0.4;
+    --fondo-opacidad: 0.28;
   }
 
   .fondo-pc picture,

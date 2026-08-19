@@ -29,7 +29,7 @@ La app tiene exactamente cinco superficies:
 | Superficie | Ruta | Quién la usa |
 |---|---|---|
 | Portada del QR | `/i?p=<slug-panel>` | Público, móvil |
-| Formulario | `/inscripcion` — ruta propia, nunca modal | Público, móvil |
+| Formulario | `/inscripcion` — ruta propia; en escritorio se pinta como modal vía ruta interceptora | Público, móvil |
 | Confirmación | `/listo` | Público, móvil |
 | Bases legales | `/bases` | Público |
 | Panel de administración | `/admin/**` | Equipo, escritorio |
@@ -40,7 +40,7 @@ La app tiene exactamente cinco superficies:
 
 ## 2. Estado del proyecto
 
-**El flujo público está construido y el esquema de base escrito; el panel de administración no existe.** Igual vale la advertencia original: no asumas que un archivo está ahí, verifícalo. La columna de estado de la tabla dice qué está hecho de verdad y qué falta dentro de cada bloque.
+**El flujo público y el panel de administración están construidos, y el esquema de base escrito y verificado.** Igual vale la advertencia original: no asumas que un archivo está ahí, verifícalo. La columna de estado de la tabla dice qué está hecho de verdad y qué falta dentro de cada bloque.
 
 El orden de los bloques importa. Los tres primeros tienen dependencias externas — contratación, DNS, imprenta — y si se dejan para el final bloquean el lanzamiento aunque el código esté listo.
 
@@ -51,7 +51,7 @@ El orden de los bloques importa. Los tres primeros tienen dependencias externas 
 | 3 | QR y slugs: lista de paneles, generación de QR con `?p=`, entrega a imprenta | Decisión 05 | ☐ |
 | 4 | Formulario móvil: portada, ruta propia, tokens, halo en CSS, validaciones, Turnstile, borrador local | Bloque 2 | ☑ salvo Turnstile. Incluye además el layout de escritorio a dos columnas (`styles/pantalla.css`) y la ventana de inscripción por variable de entorno (`lib/concurso.ts`). Turnstile quedó fuera a propósito: los índices únicos de la base ya cubren el duplicado, que es lo que protege la integridad del sorteo |
 | 5 | Cola de correo: encolado en el alta, cron de lote, plantillas, webhooks de rebote | Bloques 1 y 2 | ☑ salvo el webhook de rebotes. El encolado lo hace la propia RPC del alta, `/api/cron/email` drena de a 100 con `for update skip locked` y `vercel.json` lo agenda. La función `registrar_evento_email` ya existe en la base: falta la ruta que verifique la firma de Resend |
-| 6 | Panel de administración: login, listado por cursor, buscador por RPC, export transmitido, sorteo, cascada persistida | Bloque 2 | ☐ |
+| 6 | Panel de administración: login, listado por cursor, buscador por RPC, export transmitido, sorteo, cascada persistida | Bloque 2 | ☑ salvo el export. Login con Supabase Auth, guardia en `proxy.ts` **y** en cada handler, listado por cursor con buscador de trigramas, interruptor manual de inscripciones, y sorteo completo: crear en borrador, ejecutar, ver resultados y promover suplentes con su motivo |
 | 7 | Bases legales: redacción nueva y revisión por abogado | Decisiones 03 y 09 | ◐ adaptadas desde las del concurso anterior con los datos del responsable (AGENCIA VS SPA) y la finalidad de marketing separada, que aquel texto no contemplaba. Quedan 15 datos marcados `[PENDIENTE]` visibles en pantalla |
 | 8 | Prueba de carga: 10.000 altas sintéticas — latencia, drenaje de la cola, tiempos del panel, peso real en red móvil | Bloques 4, 5 y 6 | ☐ |
 
@@ -93,7 +93,7 @@ Copiar cualquiera de estas piezas reintroduce un fallo que ya está diagnosticad
 - El envío de correo dentro del request de inscripción
 - `ejecutar_sorteo()` con `setseed()` + `random()`
 - La promoción de suplentes calculada en el navegador del admin
-- El formulario dentro de un modal
+- El formulario dentro de un modal **sin URL** (ver §1: el modal de escritorio sí se porta, pero como ruta interceptora, no como estado de la portada)
 - `FONDO.png` (2,1 MB como `background-image`)
 - La paleta paralela del correo (la constante `C` de `lib/email.ts`)
 - El `@font-face` manual duplicado y los selectores que piden la fuente por nombre literal

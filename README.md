@@ -34,6 +34,8 @@ CONCURSO_CIERRE=2100-01-01T00:00:00-04:00 npm run dev
 | `/inscripcion` | Formulario de inscripción |
 | `/listo` | Confirmación |
 | `/bases` | Bases y condiciones (borrador, requiere abogado) |
+| `/admin` | Panel: estado del concurso, recuentos, sorteos |
+| `/admin/inscripciones` | Listado paginado por cursor con buscador |
 | `/api/inscripcion` | Alta: revalida en servidor y llama a la RPC `crear_inscripcion` |
 | `/api/cron/email` | Drenaje de `email_outbox` por lotes de 100 (Vercel Cron) |
 | `proxy.ts` | Exige la puerta 18+ y resuelve la atribución de panel |
@@ -94,7 +96,9 @@ ya instalado).
    e imprimir los QR.
 6. **Webhook de rebotes.** La función `registrar_evento_email` ya existe en la
    base; falta la ruta que reciba y verifique la firma de Resend.
-7. **Panel de administración** y **prueba de carga** con 10.000 altas.
+7. **Usuario del panel.** Créalo en Supabase → Authentication → Users. No hay
+   registro público: es la única forma de entrar a `/admin`.
+8. **Prueba de carga** con 10.000 altas.
 
 Opcional y no bloqueante: Cloudflare Turnstile. Los índices únicos sobre RUT y
 correo normalizados ya impiden la inscripción duplicada, que es lo que protege
