@@ -399,6 +399,56 @@ console.log("\n=== 12. Doble submit ===");
   await ctx.close();
 }
 
+console.log("\n=== 13. El modal se abre con efecto, tambien en celular ===");
+{
+  // El viewport de nueva() es 390x844: celular. Las dos animaciones vivian
+  // dentro de @media (min-width:1024px), asi que aca no habia NINGUNA, y como
+  // el fondo del modal es el mismo naranja de la portada el cambio no se
+  // percibia en absoluto.
+  const { ctx, p } = await nueva();
+  await p.goto(B + "/edad?next=%2Fi", { waitUntil: "domcontentloaded" });
+  await p.getByRole("button", { name: /tengo 18/i }).click();
+  await p.waitForURL("**/i", { timeout: 5000 });
+
+  // Cuenta montajes del marco: el esqueleto y la pagina son hermanos de un
+  // Suspense, asi que si los dos trajeran <ModalInscripcion> el marco se
+  // desmontaria y volveria a montar, repitiendo la animacion a media apertura.
+  await p.evaluate(() => {
+    window.__montajes = 0;
+    new MutationObserver((muts) => {
+      for (const m of muts)
+        for (const n of m.addedNodes)
+          if (n.nodeType === 1 && n.classList?.contains("modal-fondo"))
+            window.__montajes++;
+    }).observe(document.body, { childList: true, subtree: true });
+  });
+
+  await p.getByRole("link", { name: /dale/i }).click();
+  await p.waitForSelector(".modal-panel", { state: "visible", timeout: 8000 });
+
+  const anim = await p.evaluate(() => {
+    const nombres = (sel) => {
+      const el = document.querySelector(sel);
+      return el ? el.getAnimations().map((a) => a.animationName ?? "?") : [];
+    };
+    return { fondo: nombres(".modal-fondo"), panel: nombres(".modal-panel") };
+  });
+
+  check(anim.fondo.includes("modal-entra"), `el fondo entra con fundido (${anim.fondo.join(",") || "ninguna"})`);
+  check(anim.panel.includes("modal-sube"), `el panel sube en celular (${anim.panel.join(",") || "ninguna"})`);
+
+  await p.waitForSelector("#f-nombre", { timeout: 8000 });
+  const montajes = await p.evaluate(() => window.__montajes);
+  check(montajes === 1, `el marco se monta una sola vez, sin repetir la animacion (${montajes})`);
+
+  // El dialogo se anuncia por aria-labelledby="modal-titulo". Si el esqueleto
+  // no aportara ese id, durante la carga seria un dialogo sin nombre.
+  const titulado = await p.locator("#modal-titulo").count();
+  check(titulado === 1, `el dialogo siempre tiene titulo accesible (${titulado})`);
+
+  await ctx.close();
+}
+
 await browser.close();
 console.log(`\n${fallas === 0 ? "TODO OK" : fallas + " FALLA(S)"}`);
 process.exit(fallas === 0 ? 0 : 1);

@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { Resend } from "resend";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { remitente, resendCliente, respuestaA } from "@/lib/resend";
 import { plantilla, type TipoCorreo } from "@/lib/email";
 
 export const runtime = "nodejs";
@@ -34,13 +34,11 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = supabaseAdmin();
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM;
-  if (!supabase || !apiKey || !from) {
+  const resend = resendCliente();
+  const from = remitente();
+  if (!supabase || !resend || !from) {
     return NextResponse.json({ error: "sin_configurar" }, { status: 503 });
   }
-
-  const resend = new Resend(apiKey);
 
   // Primero se rescatan los que quedaron en 'enviando' porque la instancia
   // murió entre la toma del lote y el cierre. Sin esto se quedan colgados para
@@ -77,7 +75,7 @@ export async function GET(request: NextRequest) {
       const { data, error: errEnvio } = await resend.emails.send({
         from,
         to: fila.email,
-        replyTo: process.env.RESEND_REPLY_TO || undefined,
+        replyTo: respuestaA(),
         subject: asunto,
         html,
         text: texto,

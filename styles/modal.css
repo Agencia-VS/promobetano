@@ -24,6 +24,14 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  /*
+   * En móvil el fondo es opaco y del MISMO naranja que la portada, así que sin
+   * este fundido el cambio de pantalla no se percibe: dos superficies del mismo
+   * color, una sustituida por la otra sin transición. Durante los 180 ms se ve
+   * la portada siendo cubierta, y esa es toda la pista visual de que algo se
+   * abrió encima.
+   */
+  animation: modal-entra 0.18s ease both;
 }
 
 .modal-panel {
@@ -35,6 +43,9 @@
   padding: 40px max(24px, env(safe-area-inset-left))
     calc(40px + env(safe-area-inset-bottom))
     max(24px, env(safe-area-inset-right));
+  /* El contenido sube mientras el fondo entra. Un desplazamiento corto: el
+     panel ocupa la pantalla completa, y recorrer más se lee como un salto. */
+  animation: modal-sube 0.26s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 /* El botón de cierre en móvil va dentro, arriba a la derecha, con área táctil
@@ -122,6 +133,17 @@
 @keyframes modal-entra {
   from {
     opacity: 0;
+  }
+}
+
+@keyframes modal-sube {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 

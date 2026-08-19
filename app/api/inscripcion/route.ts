@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
   // Se comprueba acá y no solo en la página: quien tenga el formulario abierto
   // desde antes del cierre —o desde antes de que alguien lo cierre a mano—
   // puede enviarlo igual.
-  const { estado } = await estadoVigente();
+  const { estado } = await estadoVigente(new Date(), { fresco: true });
   if (estado !== "abierto") {
     return NextResponse.json({ error: "cerrado" }, { status: 409 });
   }

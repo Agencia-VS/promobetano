@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { headers } from "next/headers";
-import { ModalInscripcion } from "@/components/ModalInscripcion";
 import { ContenidoModalInscripcion } from "@/components/ContenidoModalInscripcion";
 import { HEADER_ORIGEN, ORIGEN_DIRECTO } from "@/lib/origen";
 import { textoCierre } from "@/lib/concurso";
@@ -17,6 +16,10 @@ export const dynamic = "force-dynamic";
  *
  * Una visita directa, una recarga o un enlace compartido NO pasan por acá: los
  * atiende app/inscripcion/page.tsx a pantalla completa.
+ *
+ * El marco <ModalInscripcion> lo pone layout.tsx, no esta página: acá se lee el
+ * interruptor del concurso, y eso obliga a render dinámico. Con el marco dentro,
+ * al tocar el botón no se pintaba nada hasta que el servidor contestaba.
  */
 export default async function ModalInscripcionPage() {
   const h = await headers();
@@ -26,7 +29,7 @@ export default async function ModalInscripcionPage() {
   if (estado !== "abierto") {
     const { titulo, detalle } = textoCierre(estado, fuente);
     return (
-      <ModalInscripcion>
+      <>
         <h1 id="modal-titulo" style={estiloTitulo}>
           {titulo}
         </h1>
@@ -34,15 +37,11 @@ export default async function ModalInscripcionPage() {
         <Link href="/i" style={estiloVolver}>
           Volver
         </Link>
-      </ModalInscripcion>
+      </>
     );
   }
 
-  return (
-    <ModalInscripcion>
-      <ContenidoModalInscripcion origen={origen} />
-    </ModalInscripcion>
-  );
+  return <ContenidoModalInscripcion origen={origen} />;
 }
 
 const estiloTitulo: React.CSSProperties = {

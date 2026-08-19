@@ -109,9 +109,14 @@ export function FormularioInscripcion({
 
   // /listo no se alcanza con <Link>, así que sin prefetch su payload RSC se
   // descargaba recién al enviar, sobre la red del mall.
+  //
+  // Pero desde el modal /listo ya no se visita: la confirmación se muestra en su
+  // sitio. Ahí el prefetch era una descarga a fondo perdido compitiendo por el
+  // ancho de banda justo mientras el modal intentaba cargar.
   useEffect(() => {
+    if (alExito) return;
     router.prefetch("/listo");
-  }, [router]);
+  }, [router, alExito]);
 
   /** Limpia el error de un campo en cuanto el usuario lo corrige. */
   function revalida(
