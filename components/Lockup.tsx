@@ -21,15 +21,26 @@ import Image from "next/image";
 const LOCKUP = { src: "/brand/lockup.png", w: 1245, h: 544 };
 const BETANO = { src: "/brand/betano-horizontal.png", w: 4000, h: 1049 };
 
+/**
+ * `width` acepta una longitud CSS ademas de un numero, para que la portada
+ * pueda escalar el lockup con clamp() sin necesitar una media query propia.
+ * `sizes` va aparte: describe el ancho de render al optimizador y ahi si
+ * corresponde una media query, porque clamp() no le sirve para elegir archivo.
+ */
 export function Lockup({
   width,
+  sizes,
   priority = false,
+  className,
   style,
 }: {
-  width: number;
+  width: number | string;
+  sizes?: string;
   priority?: boolean;
+  className?: string;
   style?: React.CSSProperties;
 }) {
+  const ancho = typeof width === "number" ? `${width}px` : width;
   return (
     <Image
       src={LOCKUP.src}
@@ -37,21 +48,29 @@ export function Lockup({
       width={LOCKUP.w}
       height={LOCKUP.h}
       priority={priority}
-      sizes={`${width}px`}
-      style={{ width, maxWidth: "100%", height: "auto", ...style }}
+      sizes={sizes ?? ancho}
+      className={className}
+      style={{ width: ancho, maxWidth: "100%", height: "auto", ...style }}
     />
   );
 }
 
-export function BetanoLogo({ width }: { width: number }) {
+export function BetanoLogo({
+  width,
+  sizes,
+}: {
+  width: number | string;
+  sizes?: string;
+}) {
+  const ancho = typeof width === "number" ? `${width}px` : width;
   return (
     <Image
       src={BETANO.src}
       alt="Betano"
       width={BETANO.w}
       height={BETANO.h}
-      sizes={`${width}px`}
-      style={{ width, maxWidth: "100%", height: "auto" }}
+      sizes={sizes ?? ancho}
+      style={{ width: ancho, maxWidth: "100%", height: "auto" }}
     />
   );
 }

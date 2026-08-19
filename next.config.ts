@@ -33,6 +33,10 @@ const nextConfig: NextConfig = {
     // AVIF primero: los dos logos de marca son planos y comprimen muy bien,
     // y esta landing se sirve sobre la red de un mall.
     formats: ["image/avif", "image/webp"],
+    // Desde Next 16 `qualities` es una lista blanca —por defecto solo [75]— y
+    // un valor fuera de ella se ignora en silencio. El 40 es para el key
+    // visual de escritorio, que se ve al 14% de opacidad detrás del halo.
+    qualities: [40, 75],
   },
   experimental: {
     serverActions: {

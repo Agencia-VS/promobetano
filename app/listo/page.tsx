@@ -32,138 +32,147 @@ export default function ListoPage() {
   }, [router]);
 
   return (
-    <Screen variant="listo" padTop={62} padX={26}>
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 20,
-          padding: "24px 0 8px",
-        }}
-      >
-        <span
-          aria-hidden
+    <Screen
+      variant="listo"
+      padTop={62}
+      padX={26}
+      poster={
+        <div
+          className="bloque-centrado-movil"
           style={{
-            width: 60,
-            height: 60,
-            border: "1px solid rgba(255,255,255,.7)",
-            borderRadius: "50%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 24,
-            color: "#FFFFFF",
-          }}
-        >
-          ✓
-        </span>
-        <h1
-          style={{
-            margin: 0,
-            textAlign: "center",
-            fontFamily: "var(--font-title)",
-            fontWeight: 800,
-            fontSize: 30,
-            lineHeight: 1.04,
-            letterSpacing: ".06em",
-            textTransform: "uppercase",
-            color: "#FFFFFF",
-          }}
-        >
-          Quedaste dentro
-        </h1>
-        <p
-          style={{
-            margin: 0,
-            textAlign: "center",
-            fontSize: 15,
-            lineHeight: 1.6,
-            color: "#FFFFFF",
-            maxWidth: "30ch",
-          }}
-        >
-          {confirmado ? (
-            <>
-              Te mandamos la confirmación a{" "}
-              <strong style={{ fontWeight: 500 }}>{confirmado.email}</strong>.
-              Llega en menos de un minuto.
-            </>
-          ) : (
-            "Te mandamos la confirmación a tu correo. Llega en menos de un minuto."
-          )}
-        </p>
-      </div>
-
-      <div
-        style={{
-          marginTop: 24,
-          background: "var(--color-ink)",
-          padding: "22px 20px",
-          display: "flex",
-          flexDirection: "column",
-          gap: 18,
-          boxShadow: "0 14px 36px rgba(60,0,0,.4)",
-        }}
-      >
-        <span
-          style={{
-            fontFamily: "var(--font-title)",
-            fontSize: 10.5,
-            letterSpacing: ".3em",
-            textTransform: "uppercase",
-            color: "var(--color-confianza)",
-          }}
-        >
-          Si te lo ganas, así se usa
-        </span>
-        <ol
-          style={{
-            margin: 0,
-            padding: 0,
-            listStyle: "none",
             display: "flex",
             flexDirection: "column",
-            gap: 14,
+            gap: 20,
+            padding: "24px 0 8px",
           }}
         >
-          <Paso n="01">Abre la botella.</Paso>
-          <Paso n="02">Susúrrate: «tú puedes».</Paso>
-          <Paso n="03">Échate bastante y con confianza.</Paso>
-        </ol>
-      </div>
+          <span
+            aria-hidden
+            style={{
+              width: 60,
+              height: 60,
+              border: "1px solid rgba(255,255,255,.7)",
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 24,
+              color: "#FFFFFF",
+              flexShrink: 0,
+            }}
+          >
+            ✓
+          </span>
+          <h1
+            style={{
+              margin: 0,
+              fontFamily: "var(--font-title)",
+              fontWeight: 800,
+              fontSize: "clamp(30px, 3.4vw, 46px)",
+              lineHeight: 1.04,
+              letterSpacing: ".06em",
+              textTransform: "uppercase",
+              color: "#FFFFFF",
+            }}
+          >
+            Quedaste dentro
+          </h1>
+          <p
+            style={{
+              margin: 0,
+              fontSize: "clamp(15px, 1.1vw, 17.5px)",
+              lineHeight: 1.6,
+              color: "#FFFFFF",
+              maxWidth: "34ch",
+            }}
+          >
+            {confirmado ? (
+              <>
+                Te mandamos la confirmación a{" "}
+                <strong style={{ fontWeight: 500 }}>{confirmado.email}</strong>.
+                Llega en menos de un minuto.
+              </>
+            ) : (
+              "Te mandamos la confirmación a tu correo. Llega en menos de un minuto."
+            )}
+          </p>
+        </div>
+      }
+      accion={
+        <>
+          <div
+            style={{
+              marginTop: 24,
+              background: "var(--color-ink)",
+              padding: "22px 20px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 18,
+              boxShadow: "0 14px 36px rgba(60,0,0,.4)",
+            }}
+          >
+            <span
+              style={{
+                fontFamily: "var(--font-title)",
+                fontSize: 10.5,
+                letterSpacing: ".3em",
+                textTransform: "uppercase",
+                color: "var(--color-confianza)",
+              }}
+            >
+              Si te lo ganas, así se usa
+            </span>
+            <ol
+              style={{
+                margin: 0,
+                padding: 0,
+                listStyle: "none",
+                display: "flex",
+                flexDirection: "column",
+                gap: 14,
+              }}
+            >
+              <Paso n="01">Abre la botella.</Paso>
+              <Paso n="02">Susúrrate: «tú puedes».</Paso>
+              <Paso n="03">Échate bastante y con confianza.</Paso>
+            </ol>
+          </div>
 
-      <div
-        style={{
-          marginTop: 24,
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 8,
-        }}
-      >
-        {/* TODO(§Qué falta 02): fecha del sorteo. */}
-        <InfoBadge label="Sorteo" value="Fecha por definir" pending />
-        {/* TODO(§Qué falta 03): premio. */}
-        <InfoBadge label="Premio" value="Por definir" pending />
-      </div>
+          <div
+            style={{
+              marginTop: 24,
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 8,
+            }}
+          >
+            {/* TODO(§Qué falta 02): fecha del sorteo. */}
+            <InfoBadge label="Sorteo" value="Fecha por definir" pending />
+            {/* TODO(§Qué falta 03): premio. */}
+            <InfoBadge label="Premio" value="Por definir" pending />
+          </div>
 
-      <p
-        style={{
-          margin: "auto 0 0",
-          paddingTop: 24,
-          fontSize: 13.5,
-          lineHeight: 1.6,
-          color: "#FFFFFF",
-        }}
-      >
-        No revisamos tu bandeja de spam por ti. Si no llega, escríbenos a{" "}
-        <a href={`mailto:${CORREO_DATOS}`}>{CORREO_DATOS}</a>.
-      </p>
-
-      <Footer18>
-        Juega con responsabilidad. <Link href="/bases">Bases y condiciones</Link>
-      </Footer18>
-    </Screen>
+          <p
+            style={{
+              margin: "auto 0 0",
+              paddingTop: 24,
+              fontSize: 13.5,
+              lineHeight: 1.6,
+              color: "#FFFFFF",
+            }}
+          >
+            No revisamos tu bandeja de spam por ti. Si no llega, escríbenos a{" "}
+            <a href={`mailto:${CORREO_DATOS}`}>{CORREO_DATOS}</a>.
+          </p>
+        </>
+      }
+      pie={
+        <Footer18>
+          Juega con responsabilidad.{" "}
+          <Link href="/bases">Bases y condiciones</Link>
+        </Footer18>
+      }
+    />
   );
 }
 

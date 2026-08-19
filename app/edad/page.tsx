@@ -41,7 +41,10 @@ export default async function EdadPage({ searchParams }: PageProps<"/edad">) {
         overflow: "hidden",
       }}
     >
-      <div style={{ position: "absolute", inset: 0, opacity: 0.35 }}>
+      <div
+        className="halo--centrado"
+        style={{ position: "absolute", inset: 0, opacity: 0.35 }}
+      >
         <Halo variant="portada" />
       </div>
 

@@ -2,8 +2,17 @@
  * Verificación end-to-end del flujo de inscripción. Cada bloque reproduce un
  * defecto concreto encontrado en la revisión de código, para que no vuelva.
  *
- *   1. npm run build && npm start   (o npm run dev)
+ *   1. Levanta el servidor CON LA VENTANA ABIERTA. Con las fechas reales el
+ *      formulario no existe fuera del 21 al 23 de agosto, así que para probar:
+ *
+ *        CONCURSO_INICIO=2020-01-01T00:00:00-04:00 \
+ *        CONCURSO_CIERRE=2100-01-01T00:00:00-04:00 npm run dev
+ *
  *   2. node test/e2e/flujo.mjs
+ *
+ * El alta contra Supabase se simula con page.route: esta suite verifica el
+ * flujo de la interfaz —validaciones, borrador, estados, reintento— y no la
+ * base, que se prueba aparte contra un PostgreSQL real.
  *
  * Requiere Playwright y un Chromium. Con CHROMIUM_PATH se puede apuntar a uno
  * ya instalado en el sistema.
@@ -19,8 +28,20 @@ const check = (c, m) => { if (!c) fallas++; ok(c, m); };
 const browser = await chromium.launch(
   process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {},
 );
-const nueva = async () => {
+/**
+ * `respuesta` fuerza lo que devuelve /api/inscripcion. Por defecto un alta
+ * exitosa, para que los bloques que prueban la interfaz no dependan de tener
+ * un Supabase levantado.
+ */
+const nueva = async (respuesta = { status: 201, body: { ok: true } }) => {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  await ctx.route("**/api/inscripcion", (route) =>
+    route.fulfill({
+      status: respuesta.status,
+      contentType: "application/json",
+      body: JSON.stringify(respuesta.body),
+    }),
+  );
   const p = await ctx.newPage();
   const errores = [];
   p.on("console", (m) => { if (m.type() === "error") errores.push(m.text()); });
@@ -247,7 +268,53 @@ console.log("\n=== 9. /bases existe y es alcanzable sin puerta ===");
   await ctx.close();
 }
 
-console.log("\n=== 10. Doble submit ===");
+console.log("\n=== 10. Fallo del alta y reintento ===");
+{
+  // Duplicado: el servidor responde 409 y la persona tiene que entender por
+  // que y poder corregir, no quedarse mirando un spinner.
+  const { ctx, p } = await nueva({ status: 409, body: { error: "duplicado_rut" } });
+  await p.goto(B + "/edad?next=%2Finscripcion", { waitUntil: "domcontentloaded" });
+  await p.getByRole("button", { name: /tengo 18/i }).click();
+  await p.waitForURL("**/inscripcion", { timeout: 5000 });
+  await p.locator("#f-nombre").fill("Ana Perez");
+  await p.locator("#f-email").fill("ana@correo.cl");
+  await p.locator("#f-tel").fill("87654321");
+  await p.locator("#f-rut").fill("9568547-1");
+  await p.locator("input[type=checkbox]").nth(0).check();
+  await p.locator("input[type=checkbox]").nth(1).check();
+  await p.getByRole("button", { name: /dale/i }).click();
+  await p.waitForTimeout(600);
+
+  check(new URL(p.url()).pathname === "/inscripcion", `un alta rechazada NO navega a /listo (${new URL(p.url()).pathname})`);
+  check((await p.locator("text=ya esta inscrito").count()) + (await p.locator("text=ya está inscrito").count()) > 0, "explica que ese RUT ya esta inscrito");
+  check((await p.getByRole("button", { name: /reintentar/i }).count()) > 0, "ofrece reintentar en vez de dejar un callejon sin salida");
+  const habilitado = await p.getByRole("button", { name: /reintentar/i }).isEnabled();
+  check(habilitado, "el boton de reintento queda habilitado");
+  await ctx.close();
+}
+
+{
+  // Caida de red: el fetch lanza y la interfaz tiene que decirlo.
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  await ctx.route("**/api/inscripcion", (route) => route.abort("failed"));
+  const p = await ctx.newPage();
+  await p.goto(B + "/edad?next=%2Finscripcion", { waitUntil: "domcontentloaded" });
+  await p.getByRole("button", { name: /tengo 18/i }).click();
+  await p.waitForURL("**/inscripcion", { timeout: 5000 });
+  await p.locator("#f-nombre").fill("Ana Perez");
+  await p.locator("#f-email").fill("ana@correo.cl");
+  await p.locator("#f-tel").fill("87654321");
+  await p.locator("#f-rut").fill("9568547-1");
+  await p.locator("input[type=checkbox]").nth(0).check();
+  await p.locator("input[type=checkbox]").nth(1).check();
+  await p.getByRole("button", { name: /dale/i }).click();
+  await p.waitForTimeout(600);
+  check((await p.locator("[role=alert]").count()) > 0, "una caida de red muestra alerta");
+  check((await p.getByRole("button", { name: /reintentar/i }).count()) > 0, "y deja reintentar");
+  await ctx.close();
+}
+
+console.log("\n=== 11. Doble submit ===");
 {
   const { ctx, p } = await nueva();
   await p.goto(B + "/edad", { waitUntil: "domcontentloaded" });

@@ -5,90 +5,116 @@ import { Lockup } from "@/components/Lockup";
 import { Footer18 } from "@/components/Footer18";
 import { InfoBadge } from "@/components/InfoBadge";
 import { HEADER_ORIGEN, ORIGEN_DIRECTO, etiquetaPanel } from "@/lib/origen";
+import { etiquetaVentana } from "@/lib/concurso";
+
+// La placa muestra la ventana de inscripción contra el reloj de cada visita.
+export const dynamic = "force-dynamic";
 
 export default async function PortadaPage() {
   const h = await headers();
   const origen = h.get(HEADER_ORIGEN) ?? ORIGEN_DIRECTO;
+  // null cuando no hay fechas cargadas: la placa marca "pendiente" en vez de
+  // inventar una fecha.
+  const ventana = etiquetaVentana();
 
   return (
-    <Screen variant="portada" padTop={66} padX={26}>
-      <Lockup
-        width={268}
-        priority
-        style={{ margin: "34px auto 8px", display: "block" }}
-      />
+    <Screen
+      variant="portada"
+      padTop={66}
+      padX={26}
+      poster={
+        <>
+          <Lockup
+            width="clamp(268px, 26vw, 336px)"
+            sizes="(min-width: 1024px) 336px, 268px"
+            priority
+            className="centrado-movil"
+            // El centrado horizontal lo pone .centrado-movil, que en escritorio lo
+            // cancela; un `margin` shorthand acá pisaría esa clase.
+            style={{ marginTop: 34, marginBottom: 8, display: "block" }}
+          />
 
-      <h1
-        style={{
-          margin: "26px 0 0",
-          fontFamily: "var(--font-title)",
-          fontWeight: 800,
-          fontSize: 25,
-          lineHeight: 1.06,
-          letterSpacing: ".055em",
-          textTransform: "uppercase",
-          color: "#FFFFFF",
-          textWrap: "pretty",
-        }}
-      >
-        Hay un aroma para el momento en que decides confiar en ti
-      </h1>
+          <h1
+            style={{
+              margin: "26px 0 0",
+              fontFamily: "var(--font-title)",
+              fontWeight: 800,
+              // El titular es el elemento de campaña: en móvil son 25px y en
+              // escritorio crece con el viewport hasta que la caja lo topa.
+              fontSize: "clamp(25px, 3.2vw, 44px)",
+              lineHeight: 1.06,
+              letterSpacing: ".055em",
+              textTransform: "uppercase",
+              color: "#FFFFFF",
+              textWrap: "pretty",
+            }}
+          >
+            Hay un aroma para el momento en que decides confiar en ti
+          </h1>
 
-      <p
-        style={{
-          margin: "26px 0 0",
-          fontSize: 15.5,
-          lineHeight: 1.65,
-          color: "#FFFFFF",
-          maxWidth: "32ch",
-        }}
-      >
-        Un perfume único en su tipo, elaborado con aromas científicamente
-        comprobados para hacerte sentir más seguro.
-      </p>
+          <p
+            style={{
+              margin: "26px 0 0",
+              fontSize: "clamp(15.5px, 1.15vw, 18px)",
+              lineHeight: 1.65,
+              color: "#FFFFFF",
+              maxWidth: "38ch",
+            }}
+          >
+            Un perfume único en su tipo, elaborado con aromas científicamente
+            comprobados para hacerte sentir más seguro.
+          </p>
+        </>
+      }
+      accion={
+        <>
+          <div
+            style={{
+              paddingTop: 26,
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 8,
+            }}
+          >
+            <InfoBadge
+              label="Inscripciones"
+              value={ventana ?? "Fechas por definir"}
+              pending={ventana === null}
+            />
+            {/* TODO(§Qué falta 05): lista de paneles en lib/origen.ts. */}
+            <InfoBadge label="Estás en" value={etiquetaPanel(origen)} pending />
+          </div>
 
-      <div
-        style={{
-          marginTop: "auto",
-          paddingTop: 26,
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 8,
-        }}
-      >
-        {/* TODO(§Qué falta 01–02): fecha del sorteo. */}
-        <InfoBadge label="Sorteo" value="Fecha por definir" pending />
-        {/* TODO(§Qué falta 05): lista de paneles en lib/origen.ts. */}
-        <InfoBadge label="Estás en" value={etiquetaPanel(origen)} pending />
-      </div>
-
-      <Link
-        href="/inscripcion"
-        style={{
-          marginTop: 26,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: 56,
-          background: "var(--color-ink)",
-          color: "var(--color-bone)",
-          fontFamily: "var(--font-title)",
-          fontWeight: 800,
-          fontSize: 15.5,
-          letterSpacing: ".16em",
-          textTransform: "uppercase",
-          borderRadius: 3,
-          boxShadow: "0 12px 32px rgba(60,0,0,.35)",
-          textDecoration: "none",
-        }}
-      >
-        Confía y dale
-      </Link>
-
-      <Footer18 topGap={10}>
-        Juega con responsabilidad. Solo mayores de 18 años.{" "}
-        <Link href="/bases">Bases y condiciones</Link>
-      </Footer18>
-    </Screen>
+          <Link
+            href="/inscripcion"
+            style={{
+              marginTop: 26,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: 56,
+              background: "var(--color-ink)",
+              color: "var(--color-bone)",
+              fontFamily: "var(--font-title)",
+              fontWeight: 800,
+              fontSize: 15.5,
+              letterSpacing: ".16em",
+              textTransform: "uppercase",
+              borderRadius: 3,
+              boxShadow: "0 12px 32px rgba(60,0,0,.35)",
+              textDecoration: "none",
+            }}
+          >
+            Confía y dale
+          </Link>
+        </>
+      }
+      pie={
+        <Footer18 topGap={10}>
+          Juega con responsabilidad. Solo mayores de 18 años.{" "}
+          <Link href="/bases">Bases y condiciones</Link>
+        </Footer18>
+      }
+    />
   );
 }

@@ -25,6 +25,24 @@ import { CORREO_DATOS } from "@/lib/contacto";
 const CAMPOS_TEXTO: CampoTexto[] = ["nombre", "email", "tel", "rut"];
 const DEBOUNCE_MS = 400;
 
+/**
+ * Mensajes de los fallos que devuelve /api/inscripcion. Cada uno tiene que
+ * decir qué pasó y qué hacer: un "error inesperado" en un mall, con la persona
+ * de pie y con una mano, es un callejón sin salida.
+ */
+function mensajeDeFalla(codigo: unknown): string {
+  switch (codigo) {
+    case "duplicado_rut":
+      return "Ese RUT ya está inscrito. Es una inscripción por persona.";
+    case "duplicado_email":
+      return "Ese correo ya está inscrito. Es una inscripción por persona.";
+    case "cerrado":
+      return "Las inscripciones ya cerraron.";
+    default:
+      return "No pudimos inscribirte. Toca de nuevo para reintentar.";
+  }
+}
+
 export function FormularioInscripcion({ origen }: { origen: string }) {
   const router = useRouter();
   // El borrador solo trae campos de texto; el consentimiento parte siempre en
@@ -34,6 +52,9 @@ export function FormularioInscripcion({ origen }: { origen: string }) {
   );
   const [e, setE] = useState<InscripcionErrors>({});
   const [enviando, setEnviando] = useState(false);
+  // Fallo del envío, distinto de los errores por campo: no lo produce un dato
+  // malo sino la red o el servidor, y se resuelve reintentando.
+  const [falla, setFalla] = useState<string | null>(null);
 
   const pendiente = useRef<InscripcionValues | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -106,7 +127,7 @@ export function FormularioInscripcion({ origen }: { origen: string }) {
     setE((previos) => revalida(previos, k, siguiente));
   }
 
-  function enviar(ev: React.FormEvent) {
+  async function enviar(ev: React.FormEvent) {
     ev.preventDefault();
     // Guard de reentrancia: antes `set()` reseteaba el estado a "idle" y los
     // campos no se deshabilitaban, así que una edición dentro de la ventana de
@@ -119,280 +140,332 @@ export function FormularioInscripcion({ origen }: { origen: string }) {
       return;
     }
     setE({});
+    setFalla(null);
     setEnviando(true);
 
-    // Sin backend todavía: se registra la confirmación para /listo y se navega.
-    // Cuando exista el insert + outbox del brief, va acá dentro con su ruta de
-    // error (el estado "error" y el reintento aún no existen porque nada puede
-    // fallar; ver README).
-    guardaConfirmado({ email: v.email.trim(), origen });
-    pendiente.current = null;
-    borraDraft();
-    router.push("/listo");
+    try {
+      const r = await fetch("/api/inscripcion", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        // El origen NO se manda: lo resuelve proxy.ts y llega por cabecera. Si
+        // viniera de acá, cualquiera podría acreditar sus inscripciones al
+        // panel que quisiera.
+        body: JSON.stringify({
+          nombre: v.nombre,
+          email: v.email,
+          tel: v.tel,
+          rut: v.rut,
+          edad: v.edad,
+          bases: v.bases,
+          mkt: v.mkt,
+        }),
+      });
+
+      if (r.ok) {
+        guardaConfirmado({ email: v.email.trim(), origen });
+        pendiente.current = null;
+        borraDraft();
+        // Sin apagar `enviando`: la navegación desmonta el componente y
+        // reactivar el botón acá solo abre una ventana para un segundo submit.
+        router.push("/listo");
+        return;
+      }
+
+      const cuerpo = await r.json().catch(() => ({}));
+      // El servidor revalida todo (el cliente es evadible): si rechaza campos,
+      // se pintan sobre los mismos inputs.
+      if (cuerpo?.campos) setE(cuerpo.campos as InscripcionErrors);
+      setFalla(mensajeDeFalla(cuerpo?.error));
+    } catch {
+      // Falla de red: en un mall es el caso frecuente, no el excepcional.
+      setFalla("No pudimos conectar. Revisa tu señal y toca de nuevo.");
+    }
+    setEnviando(false);
   }
 
   return (
-    <Screen variant="formulario" padTop={60} padX={24}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 16,
-          }}
-        >
-          <BetanoLogo width={124} />
-          <Badge18 size={28} />
-        </div>
+    <Screen
+      variant="formulario"
+      padTop={60}
+      padX={24}
+      poster={
+        <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+          <div className="fila-marca">
+            <BetanoLogo
+              width="clamp(124px, 11vw, 158px)"
+              sizes="(min-width: 1024px) 158px, 124px"
+            />
+            <Badge18 size={28} />
+          </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <span
-            style={{
-              fontFamily: "var(--font-title)",
-              fontSize: 10.5,
-              letterSpacing: ".3em",
-              textTransform: "uppercase",
-              color: "#FFFFFF",
-            }}
-          >
-            Inscripción
-          </span>
-          <h1
-            style={{
-              margin: 0,
-              fontFamily: "var(--font-title)",
-              fontWeight: 800,
-              fontSize: 27,
-              lineHeight: 1.04,
-              letterSpacing: ".05em",
-              textTransform: "uppercase",
-              color: "#FFFFFF",
-            }}
-          >
-            Deja tus datos y entra al sorteo
-          </h1>
-          <p
-            style={{
-              margin: 0,
-              fontSize: 14.5,
-              lineHeight: 1.6,
-              color: "#FFFFFF",
-            }}
-          >
-            Un minuto y listo. La confirmación te llega al correo.
-          </p>
-        </div>
-
-        <form onSubmit={enviar}>
-          {/* El fieldset deshabilitado congela TODO el formulario durante el
-              envío, no solo el botón. */}
-          <fieldset
-            disabled={enviando}
-            style={{
-              border: 0,
-              margin: 0,
-              padding: 0,
-              minWidth: 0,
-              display: "flex",
-              flexDirection: "column",
-              gap: 18,
-            }}
-          >
-            <Campo name="nombre" label="Nombre y apellido" error={e.nombre}>
-              {(c) => (
-                <input
-                  {...c}
-                  type="text"
-                  autoComplete="name"
-                  autoCapitalize="words"
-                  value={v.nombre}
-                  onChange={(ev) => set("nombre", ev.target.value)}
-                  placeholder="Como aparece en tu carnet"
-                  style={inputStyle(Boolean(e.nombre))}
-                />
-              )}
-            </Campo>
-
-            <Campo name="email" label="Correo" error={e.email}>
-              {(c) => (
-                <input
-                  {...c}
-                  type="email"
-                  inputMode="email"
-                  autoComplete="email"
-                  autoCapitalize="off"
-                  spellCheck={false}
-                  value={v.email}
-                  onChange={(ev) => set("email", ev.target.value)}
-                  placeholder="tu@correo.cl"
-                  style={inputStyle(Boolean(e.email))}
-                />
-              )}
-            </Campo>
-
-            <Campo name="tel" label="Teléfono" error={e.tel}>
-              {(c) => (
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    background: "var(--color-bone)",
-                    borderRadius: 4,
-                    border: bordeCampo(Boolean(e.tel)),
-                    overflow: "hidden",
-                  }}
-                >
-                  <span
-                    aria-hidden
-                    style={{
-                      padding: "0 12px 0 14px",
-                      fontSize: 16.5,
-                      color: "rgba(10,6,5,.5)",
-                      borderRight: "1px solid rgba(10,6,5,.18)",
-                      lineHeight: "50px",
-                    }}
-                  >
-                    +56 9
-                  </span>
-                  <input
-                    {...c}
-                    type="tel"
-                    inputMode="tel"
-                    autoComplete="tel"
-                    value={v.tel}
-                    onChange={(ev) => set("tel", ev.target.value)}
-                    placeholder="1234 5678"
-                    style={{
-                      flex: 1,
-                      minWidth: 0,
-                      height: 50,
-                      padding: "0 14px",
-                      fontSize: 16.5,
-                      color: "var(--color-ink)",
-                      background: "transparent",
-                      border: "none",
-                      outline: "none",
-                    }}
-                  />
-                </div>
-              )}
-            </Campo>
-
-            <Campo name="rut" label="RUT" error={e.rut}>
-              {(c) => (
-                <input
-                  {...c}
-                  type="text"
-                  // inputMode="text" y no "numeric": con el teclado numérico no
-                  // se puede escribir la K del dígito verificador.
-                  inputMode="text"
-                  autoCapitalize="characters"
-                  autoComplete="off"
-                  value={v.rut}
-                  onChange={(ev) => set("rut", ev.target.value)}
-                  onBlur={(ev) => set("rut", formateaRut(ev.target.value))}
-                  placeholder="12.345.678-5"
-                  style={{
-                    ...inputStyle(Boolean(e.rut)),
-                    letterSpacing: ".02em",
-                  }}
-                />
-              )}
-            </Campo>
-
-            <div
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <span
               style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 4,
-                paddingTop: 4,
-                borderTop: "1px solid rgba(60,0,0,.3)",
-              }}
-            >
-              <Casilla
-                checked={v.edad}
-                onChange={(x) => set("edad", x)}
-                describedBy={e.legal ? "legal-error" : undefined}
-              >
-                Tengo 18 años o más.
-              </Casilla>
-              <div style={{ borderTop: "1px solid rgba(60,0,0,.18)" }}>
-                <Casilla
-                  checked={v.bases}
-                  onChange={(x) => set("bases", x)}
-                  describedBy={e.legal ? "legal-error" : undefined}
-                >
-                  Acepto las <a href="/bases">bases</a> y el tratamiento de mis
-                  datos para este sorteo.
-                </Casilla>
-              </div>
-              {e.legal && (
-                <span
-                  id="legal-error"
-                  role="alert"
-                  style={{
-                    fontSize: 12.5,
-                    fontWeight: 500,
-                    color: "var(--color-rust-deep)",
-                    paddingBottom: 6,
-                  }}
-                >
-                  {e.legal}
-                </span>
-              )}
-              {/* La Ley 21.719 exige consentimiento específico por finalidad:
-                  esta casilla va separada, opcional y nunca preseleccionada. */}
-              <div style={{ borderTop: "1px solid rgba(60,0,0,.18)" }}>
-                <Casilla checked={v.mkt} onChange={(x) => set("mkt", x)}>
-                  Quiero recibir promociones de Betano.{" "}
-                  <span style={{ color: "rgba(255,255,255,.72)" }}>
-                    Opcional.
-                  </span>
-                </Casilla>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              style={{
-                height: 56,
-                background: "var(--color-ink)",
-                color: "var(--color-bone)",
-                border: "none",
-                borderRadius: 3,
                 fontFamily: "var(--font-title)",
-                fontWeight: 800,
-                fontSize: 15.5,
-                letterSpacing: ".16em",
+                fontSize: 10.5,
+                letterSpacing: ".3em",
                 textTransform: "uppercase",
-                cursor: enviando ? "default" : "pointer",
-                boxShadow: "0 12px 32px rgba(60,0,0,.35)",
-                opacity: enviando ? 0.7 : 1,
-              }}
-            >
-              {enviando ? "Inscribiendo…" : "Confía y dale"}
-            </button>
-
-            <p
-              style={{
-                margin: 0,
-                fontSize: 12,
-                lineHeight: 1.55,
                 color: "#FFFFFF",
               }}
             >
-              Guardamos lo que escribes en tu teléfono por 20 minutos. Si se cae
-              la señal, no pierdes nada.
+              Inscripción
+            </span>
+            <h1
+              style={{
+                margin: 0,
+                fontFamily: "var(--font-title)",
+                fontWeight: 800,
+                fontSize: "clamp(27px, 3vw, 40px)",
+                lineHeight: 1.04,
+                letterSpacing: ".05em",
+                textTransform: "uppercase",
+                color: "#FFFFFF",
+              }}
+            >
+              Deja tus datos y entra al sorteo
+            </h1>
+            <p
+              style={{
+                margin: 0,
+                fontSize: "clamp(14.5px, 1.05vw, 17px)",
+                lineHeight: 1.6,
+                color: "#FFFFFF",
+                maxWidth: "36ch",
+              }}
+            >
+              Un minuto y listo. La confirmación te llega al correo.
             </p>
-          </fieldset>
-        </form>
-      </div>
+          </div>
+        </div>
+      }
+      accion={
+      <form onSubmit={enviar}>
+        {/* El fieldset deshabilitado congela TODO el formulario durante el
+            envío, no solo el botón. */}
+        <fieldset
+          disabled={enviando}
+          style={{
+            border: 0,
+            margin: 0,
+            padding: 0,
+            minWidth: 0,
+            display: "flex",
+            flexDirection: "column",
+            gap: 18,
+          }}
+        >
+          <Campo name="nombre" label="Nombre y apellido" error={e.nombre}>
+            {(c) => (
+              <input
+                {...c}
+                type="text"
+                autoComplete="name"
+                autoCapitalize="words"
+                value={v.nombre}
+                onChange={(ev) => set("nombre", ev.target.value)}
+                placeholder="Como aparece en tu carnet"
+                style={inputStyle(Boolean(e.nombre))}
+              />
+            )}
+          </Campo>
 
-      <Footer18 topGap={8}>
-        Juega con responsabilidad. Consultas de datos personales:{" "}
-        <a href={`mailto:${CORREO_DATOS}`}>{CORREO_DATOS}</a>
-      </Footer18>
-    </Screen>
+          <Campo name="email" label="Correo" error={e.email}>
+            {(c) => (
+              <input
+                {...c}
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                autoCapitalize="off"
+                spellCheck={false}
+                value={v.email}
+                onChange={(ev) => set("email", ev.target.value)}
+                placeholder="tu@correo.cl"
+                style={inputStyle(Boolean(e.email))}
+              />
+            )}
+          </Campo>
+
+          <Campo name="tel" label="Teléfono" error={e.tel}>
+            {(c) => (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  background: "var(--color-bone)",
+                  borderRadius: 4,
+                  border: bordeCampo(Boolean(e.tel)),
+                  overflow: "hidden",
+                }}
+              >
+                <span
+                  aria-hidden
+                  style={{
+                    padding: "0 12px 0 14px",
+                    fontSize: 16.5,
+                    color: "rgba(10,6,5,.5)",
+                    borderRight: "1px solid rgba(10,6,5,.18)",
+                    lineHeight: "50px",
+                  }}
+                >
+                  +56 9
+                </span>
+                <input
+                  {...c}
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  value={v.tel}
+                  onChange={(ev) => set("tel", ev.target.value)}
+                  placeholder="1234 5678"
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    height: 50,
+                    padding: "0 14px",
+                    fontSize: 16.5,
+                    color: "var(--color-ink)",
+                    background: "transparent",
+                    border: "none",
+                    outline: "none",
+                  }}
+                />
+              </div>
+            )}
+          </Campo>
+
+          <Campo name="rut" label="RUT" error={e.rut}>
+            {(c) => (
+              <input
+                {...c}
+                type="text"
+                // inputMode="text" y no "numeric": con el teclado numérico no
+                // se puede escribir la K del dígito verificador.
+                inputMode="text"
+                autoCapitalize="characters"
+                autoComplete="off"
+                value={v.rut}
+                onChange={(ev) => set("rut", ev.target.value)}
+                onBlur={(ev) => set("rut", formateaRut(ev.target.value))}
+                placeholder="12.345.678-5"
+                style={{
+                  ...inputStyle(Boolean(e.rut)),
+                  letterSpacing: ".02em",
+                }}
+              />
+            )}
+          </Campo>
+
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 4,
+              paddingTop: 4,
+              borderTop: "1px solid rgba(60,0,0,.3)",
+            }}
+          >
+            <Casilla
+              checked={v.edad}
+              onChange={(x) => set("edad", x)}
+              describedBy={e.legal ? "legal-error" : undefined}
+            >
+              Tengo 18 años o más.
+            </Casilla>
+            <div style={{ borderTop: "1px solid rgba(60,0,0,.18)" }}>
+              <Casilla
+                checked={v.bases}
+                onChange={(x) => set("bases", x)}
+                describedBy={e.legal ? "legal-error" : undefined}
+              >
+                Acepto las <a href="/bases">bases</a> y el tratamiento de mis
+                datos para este sorteo.
+              </Casilla>
+            </div>
+            {e.legal && (
+              <span
+                id="legal-error"
+                role="alert"
+                style={{
+                  fontSize: 12.5,
+                  fontWeight: 500,
+                  color: "var(--color-rust-deep)",
+                  paddingBottom: 6,
+                }}
+              >
+                {e.legal}
+              </span>
+            )}
+            {/* La Ley 21.719 exige consentimiento específico por finalidad:
+                esta casilla va separada, opcional y nunca preseleccionada. */}
+            <div style={{ borderTop: "1px solid rgba(60,0,0,.18)" }}>
+              <Casilla checked={v.mkt} onChange={(x) => set("mkt", x)}>
+                Quiero recibir promociones de Betano.{" "}
+                <span style={{ color: "rgba(255,255,255,.72)" }}>
+                  Opcional.
+                </span>
+              </Casilla>
+            </div>
+          </div>
+
+          {falla && (
+            <p
+              role="alert"
+              style={{
+                margin: 0,
+                padding: "12px 14px",
+                background: "var(--color-rust-deep)",
+                color: "var(--color-bone)",
+                fontSize: 13.5,
+                lineHeight: 1.5,
+                borderRadius: 3,
+              }}
+            >
+              {falla}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            style={{
+              height: 56,
+              background: "var(--color-ink)",
+              color: "var(--color-bone)",
+              border: "none",
+              borderRadius: 3,
+              fontFamily: "var(--font-title)",
+              fontWeight: 800,
+              fontSize: 15.5,
+              letterSpacing: ".16em",
+              textTransform: "uppercase",
+              cursor: enviando ? "default" : "pointer",
+              boxShadow: "0 12px 32px rgba(60,0,0,.35)",
+              opacity: enviando ? 0.7 : 1,
+            }}
+          >
+            {enviando ? "Inscribiendo…" : falla ? "Reintentar" : "Confía y dale"}
+          </button>
+
+          <p
+            style={{
+              margin: 0,
+              fontSize: 12,
+              lineHeight: 1.55,
+              color: "#FFFFFF",
+            }}
+          >
+            Guardamos lo que escribes en tu teléfono por 20 minutos. Si se cae
+            la señal, no pierdes nada.
+          </p>
+        </fieldset>
+      </form>
+      }
+      pie={
+        <Footer18 topGap={8}>
+          Juega con responsabilidad. Consultas de datos personales:{" "}
+          <a href={`mailto:${CORREO_DATOS}`}>{CORREO_DATOS}</a>
+        </Footer18>
+      }
+    />
   );
 }
