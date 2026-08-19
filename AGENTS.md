@@ -50,7 +50,7 @@ El orden de los bloques importa. Los tres primeros tienen dependencias externas 
 | 2 | Esquema y RPC: `inscripciones`, `email_outbox`, `sorteos`, `sorteo_resultados`, índices, `listar_inscripciones`, `ejecutar_sorteo`, RLS | Decisiones 02 y 03 | ☑ escrito y verificado en `supabase/migrations/` — **falta aplicarlo a un proyecto real** (bloqueado por el bloque 1). El sorteo quedó parametrizado (`ventana_desde/hasta`, `n_ganadores`, `n_suplentes`) para no inventar las decisiones 02 y 03: cuando se respondan se cargan filas, no se toca el esquema |
 | 3 | QR y slugs: lista de paneles, generación de QR con `?p=`, entrega a imprenta | Decisión 05 | ☐ |
 | 4 | Formulario móvil: portada, ruta propia, tokens, halo en CSS, validaciones, Turnstile, borrador local | Bloque 2 | ☑ salvo Turnstile. Incluye además el layout de escritorio a dos columnas (`styles/pantalla.css`) y la ventana de inscripción por variable de entorno (`lib/concurso.ts`). Turnstile quedó fuera a propósito: los índices únicos de la base ya cubren el duplicado, que es lo que protege la integridad del sorteo |
-| 5 | Cola de correo: encolado en el alta, cron de lote, plantillas, webhooks de rebote | Bloques 1 y 2 | ☑ salvo el webhook de rebotes. El encolado lo hace la propia RPC del alta, `/api/cron/email` drena de a 100 con `for update skip locked` y `vercel.json` lo agenda. Las cuatro plantillas están escritas y con marca —isotipo en la cabecera oscura, lockup en la tarjeta, desde `public/email/`— y el correo de ganador tiene maqueta propia. La función `registrar_evento_email` ya existe en la base: falta la ruta que verifique la firma de Resend |
+| 5 | Cola de correo: encolado en el alta, cron de lote, plantillas, webhooks de rebote | Bloques 1 y 2 | ☑ salvo el webhook de rebotes. El encolado lo hace la propia RPC del alta, `/api/cron/email` drena de a 100 con `for update skip locked` y `vercel.json` lo agenda. Las cuatro plantillas están escritas, con composición editorial sobre el ink: lockup centrado como cabecera —único logo, ya incluye «RIQUELME + Betano»—, hilos de separación en `rust` y un solo bloque naranja con los pasos del perfume. El de ganador se distingue poniendo el titular en naranja, no con otra maqueta. La función `registrar_evento_email` ya existe en la base: falta la ruta que verifique la firma de Resend |
 | 6 | Panel de administración: login, listado por cursor, buscador por RPC, export transmitido, sorteo, cascada persistida | Bloque 2 | ☑ salvo el export. Login con Supabase Auth, guardia en `proxy.ts` **y** en cada handler, listado por cursor con buscador de trigramas, interruptor manual de inscripciones, y sorteo completo: crear en borrador, ejecutar, ver resultados y promover suplentes con su motivo |
 | 7 | Bases legales: redacción nueva y revisión por abogado | Decisiones 03 y 09 | ◐ adaptadas desde las del concurso anterior con los datos del responsable (AGENCIA VS SPA) y la finalidad de marketing separada, que aquel texto no contemplaba. Quedan 15 datos marcados `[PENDIENTE]` visibles en pantalla |
 | 8 | Prueba de carga: 10.000 altas sintéticas — latencia, drenaje de la cola, tiempos del panel, peso real en red móvil | Bloques 4, 5 y 6 | ☐ |
@@ -79,7 +79,7 @@ Existe un repositorio anterior — `Agencia-VS/FinalExperinceBetano`, app `betan
 | Plantillas de correo tabuladas de `lib/email.ts` | Derivando los colores de los tokens, sin constante paralela |
 | `createSeededRng` (xmur3 + mulberry32) | Tal cual, si hace falta azar en servidor |
 | `device-token.ts` | Tal cual |
-| `escapeHtml` + `firstName`, preheader oculto | Tal cual. Las imágenes NO van a Cloudinary: se sirven desde `public/email/` con la URL absoluta que resuelve `lib/sitio.ts`, y si no hay dominio la plantilla las omite. Un servicio menos que contratar y que mantener |
+| `escapeHtml` + `firstName`, preheader oculto | Tal cual. Las imágenes del correo van por URL absoluta a `public/email/`, que resuelve `lib/sitio.ts`; si no hay dominio la plantilla las omite. **Decidido con números, no por preferencia:** por URL el correo pesa 2,4 KB; incrustadas como adjunto `cid:` pesa 28,1 KB, o sea 281 MB diarios a 10.000 envíos, y un transaccional con adjuntos tiende a la pestaña de promociones. Las `data:` URI directamente no sirven: Gmail web y Outlook de escritorio las eliminan. Cloudinary no resuelve nada acá —son dos PNG estáticos que Vercel ya sirve desde su CDN— y sería un proveedor, una clave y un punto de fallo de más |
 | `fetchAllRows()` | Solo para export y recuentos, nunca para el listado del admin |
 | Máquina de estados del sorteo de trivia + auditoría append-only | **Este es el modelo a copiar** para el sorteo nuevo: estados explícitos, `UPDATE` condicional contra el doble clic, registro que nunca borra, pool congelado sin PII, el azar decidido en el servidor |
 | Piso de accesibilidad: `:focus-visible`, `prefers-reduced-motion`, `aria-invalid`, `role="alert"` | Tal cual |
@@ -200,7 +200,7 @@ src/
   proxy.ts
 supabase/migrations/
 public/fonts/
-public/email/   copias a tamaño fijo del isotipo y el lockup, solo para correo
+public/email/   el lockup a tamaño fijo, solo para correo
 vercel.json     cron del drenaje de la cola
 ```
 

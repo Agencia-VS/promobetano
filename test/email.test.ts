@@ -82,10 +82,27 @@ test("con dominio, las imágenes son absolutas y llevan alt", () => {
       );
       assert.ok(!html.includes('alt=""'), `${tipo}: una imagen sin alt`);
     }
-    // El isotipo va en toda pieza; el lockup también.
-    const { html } = plantilla("confirmacion", "Ana");
-    assert.ok(html.includes("/email/iso-96.png"), "falta el isotipo");
-    assert.ok(html.includes("/email/lockup-600.png"), "falta el lockup");
+    // El lockup es la cabecera de las cuatro piezas.
+    for (const tipo of TIPOS) {
+      const { html } = plantilla(tipo, "Ana");
+      assert.ok(
+        html.includes("/email/lockup-600.png"),
+        `${tipo}: falta el lockup`,
+      );
+    }
+  });
+});
+
+test("el isotipo ya no viaja: el lockup es el único logo", () => {
+  // El lockup ya dice «RIQUELME + Betano», así que el isotipo era una segunda
+  // firma de la misma marca ocupando una franja entera del correo.
+  conDominio("https://eaudeconfianza.cl", () => {
+    for (const tipo of TIPOS) {
+      const { html } = plantilla(tipo, "Ana");
+      assert.ok(!html.includes("iso-96"), `${tipo}: sigue trayendo el isotipo`);
+      const imagenes = html.match(/<img/g) ?? [];
+      assert.equal(imagenes.length, 1, `${tipo}: debería llevar una sola imagen`);
+    }
   });
 });
 
@@ -93,8 +110,8 @@ test("la barra final del dominio no duplica la de la ruta", () => {
   conDominio("https://eaudeconfianza.cl/", () => {
     assert.equal(baseAbsoluta(), "https://eaudeconfianza.cl");
     assert.equal(
-      urlAbsoluta("/email/iso-96.png"),
-      "https://eaudeconfianza.cl/email/iso-96.png",
+      urlAbsoluta("/email/lockup-600.png"),
+      "https://eaudeconfianza.cl/email/lockup-600.png",
     );
   });
 });
@@ -116,8 +133,11 @@ test("VERCEL_PROJECT_PRODUCTION_URL sirve de respaldo", () => {
 
 test("el correo de ganador dice lo que el equipo prometió y nada más", () => {
   const { asunto, html, texto } = plantilla("ganador", "Ana Pérez");
-  assert.match(asunto, /felicidades, ganaste/i);
-  assert.match(html, /¡Felicidades,/);
+  // «Confiaste y ganaste», no «felicidades»: amarra con el nombre de la
+  // fragancia y con el CTA del sitio. «Felicidades» lo firma cualquier marca.
+  assert.match(asunto, /confiaste y ganaste/i);
+  assert.match(html, /¡Confiaste/);
+  assert.ok(!/felicidades/i.test(html), "volvió el «felicidades» genérico");
   assert.match(html, /el equipo se contactará contigo/i);
   assert.match(texto, /gestionar la entrega de los premios/i);
 
@@ -139,8 +159,23 @@ test("suplente no felicita a nadie", () => {
 
 test("promovido celebra, porque el cupo ya es suyo", () => {
   const { html, texto } = plantilla("promovido", "Ana");
-  assert.match(html, /¡Felicidades,/);
+  assert.match(html, /¡Confiaste/);
   assert.match(texto, /se liberó un cupo/i);
+});
+
+test("la confirmación dice solo que nos comunicaremos", () => {
+  const { html, texto } = plantilla("confirmacion", "Ana");
+  assert.match(html, /Nos comunicaremos contigo/);
+  assert.match(texto, /Nos comunicaremos contigo/);
+
+  // La frase larga que la reemplazó no debe volver por un merge distraído.
+  assert.ok(
+    !/Si sales sorteado, te escribimos/i.test(html),
+    "volvió la frase que se pidió eliminar",
+  );
+
+  // Pero los pasos del perfume se quedan: son «algo de la campaña».
+  assert.match(html, /Abre la botella/);
 });
 
 test("todo correo lleva el aviso 18+ y el contacto de datos", () => {

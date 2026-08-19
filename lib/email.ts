@@ -10,6 +10,12 @@ import { urlAbsoluta } from "./sitio.ts";
  * justo al cliente de correo que más usa la gente. Una tabla de un ancho fijo
  * es lo único que se ve igual en todos.
  *
+ * La composición es editorial sobre fondo oscuro: manda el negro cálido de
+ * campaña y el naranja aparece una sola vez, como acento. Es el registro que
+ * pide el brief —un anuncio de fragancia que resulta ser de una casa de
+ * apuestas— y en un teléfono cansa mucho menos la vista que un naranja saturado
+ * a pantalla completa, que es lo que había antes.
+ *
  * Los colores salen de MARCA, nunca de un hex escrito acá. Es la regla dura 14:
  * el repo anterior tenía una paleta paralela para el correo y acabó con tres
  * naranjas distintos que la misma persona veía en la misma sesión.
@@ -43,8 +49,12 @@ const TIPOGRAFIA = "Helvetica,Arial,sans-serif";
  * completo y los demás lo soportan a medias, así que pedir MD Nichrome acabaría
  * en una sustitución impredecible por cliente. Helvetica en todos es peor de
  * mirar pero igual en todas partes, y en un correo transaccional eso importa
- * más. La marca la ponen el color, el isotipo y el lockup.
+ * más. El display de campaña viaja donde sí puede: dentro del lockup.
  */
+
+/** Hueso a media opacidad para el cuerpo. Sobre el ink, el hueso puro compite
+    con el titular y aplana la jerarquía. */
+const CUERPO = "rgba(249,241,233,.82)";
 
 /**
  * Las imágenes solo se emiten si hay dominio configurado. Sin él, `urlAbsoluta`
@@ -52,7 +62,8 @@ const TIPOGRAFIA = "Helvetica,Arial,sans-serif";
  * lee bien, uno con iconos de imagen rota no.
  *
  * `alt` no es decorativo: buena parte de la gente lee el correo con las imágenes
- * bloqueadas por defecto, y el alt es lo único que verán ahí.
+ * bloqueadas por defecto, y el alt es lo único que verán ahí. Por eso el lockup
+ * nunca lleva información que no esté también en el texto.
  */
 function imagen(
   ruta: string,
@@ -65,19 +76,33 @@ function imagen(
   return `<img src="${src}" alt="${escapaHtml(alt)}" width="${anchoMostrado}" style="display:block;width:${anchoMostrado}px;max-width:100%;height:auto;border:0;${estiloExtra}">`;
 }
 
-/** Cabecera oscura con el isotipo. La B es roja con el rayo calado: sobre el
-    ink se lee, sobre el naranja de campaña se pierde.
-    El color del <td> es para el alt: con las imágenes bloqueadas el texto de
-    reemplazo hereda el color de la celda, y en negro sobre negro no se veía. */
+/**
+ * Cabecera: el lockup centrado con aire. Es la única pieza del display de
+ * campaña que puede viajar a un correo, así que carga sola con la identidad.
+ *
+ * El `color` del <td> es para el alt: con las imágenes bloqueadas el texto de
+ * reemplazo hereda el color de la celda, y sobre el ink en negro no se veía.
+ */
 function cabecera(): string {
-  const iso = imagen("/email/iso-96.png", "Betano", 48);
-  if (!iso) return "";
-  return `<tr><td style="padding:22px 28px;background:${MARCA.ink};font-family:${TIPOGRAFIA};font-size:13px;color:${MARCA.bone};">${iso}</td></tr>`;
+  const lockup = imagen(
+    "/email/lockup-600.png",
+    "Eau de Confianza · Riquelme + Betano",
+    230,
+    "margin:0 auto;",
+  );
+  if (!lockup) return "";
+  return `<tr><td class="e-cab" align="center" style="padding:16px 32px 34px;font-family:${TIPOGRAFIA};font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:${MARCA.bone};">${lockup}</td></tr>`;
+}
+
+/** Hilo de separación. Un borde sobre una celda vacía es la regla horizontal
+    más portable que existe: <hr> lo estilan distinto todos los clientes. */
+function hilo(): string {
+  return `<tr><td class="e-hilo" style="padding:0 32px;"><div style="height:1px;background:${MARCA.rust};line-height:1px;font-size:0;">&nbsp;</div></td></tr>`;
 }
 
 /** Pie legal. Las dos frases son obligatorias en toda pieza de la campaña. */
 function pie(): string {
-  return `<tr><td style="padding:20px 28px 24px;background:${MARCA.ink};color:rgba(249,241,233,.72);font-family:${TIPOGRAFIA};font-size:12px;line-height:1.55;">
+  return `<tr><td class="e-pie" style="padding:22px 32px 8px;font-family:${TIPOGRAFIA};font-size:12px;line-height:1.6;color:rgba(249,241,233,.6);">
 Solo mayores de 18 años. Juega con responsabilidad.<br>
 Consultas sobre tus datos: <a href="mailto:${CORREO_DATOS}" style="color:${MARCA.bone};">${CORREO_DATOS}</a>
 </td></tr>`;
@@ -87,6 +112,45 @@ const PIE_TEXTO = `Solo mayores de 18 años. Juega con responsabilidad.
 Consultas sobre tus datos: ${CORREO_DATOS}`;
 
 /**
+ * Antetítulo: versalitas con tracking ancho, en naranja. Es el recurso que en
+ * el sitio marca las etiquetas de sección (tracking 0.18–0.42em según el brief)
+ * y acá da el primer escalón de la jerarquía.
+ */
+function antetitulo(texto: string): string {
+  return `<p style="margin:0 0 14px;font-size:10.5px;letter-spacing:.3em;text-transform:uppercase;color:${MARCA.confianza};">${escapaHtml(texto)}</p>`;
+}
+
+/** Titular. `color` cambia según la pieza: hueso para las informativas, naranja
+    para la que da la buena noticia. */
+function titular(texto: string, color: string): string {
+  return `<h1 class="e-h1" style="margin:0;font-size:30px;line-height:1.1;letter-spacing:.02em;text-transform:uppercase;color:${color};">${texto}</h1>`;
+}
+
+/**
+ * Bloque de los pasos del perfume: el único campo naranja de la pieza.
+ *
+ * Sobre el naranja el texto va en blanco puro —es lo que dice el token del
+ * brief— y los numerales bajan a 70% para que se lean como numeración y no
+ * compitan con la instrucción.
+ */
+const PASOS_HTML = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${MARCA.confianza};border-radius:8px;">
+<tr><td class="e-pasos" style="padding:22px 24px;font-family:${TIPOGRAFIA};">
+<p style="margin:0 0 14px;font-size:10.5px;letter-spacing:.28em;text-transform:uppercase;color:rgba(255,255,255,.75);">Si te lo ganas, así se usa</p>
+<p style="margin:0;font-size:15.5px;line-height:1.85;color:${MARCA.white};">
+<span style="color:rgba(255,255,255,.6);">01</span>&nbsp;&nbsp;Abre la botella.<br>
+<span style="color:rgba(255,255,255,.6);">02</span>&nbsp;&nbsp;Susúrrate: «tú puedes».<br>
+<span style="color:rgba(255,255,255,.6);">03</span>&nbsp;&nbsp;Échate bastante y con confianza.
+</p>
+</td></tr></table>`;
+
+const PASOS_TEXTO = `Si te lo ganas, así se usa:
+01  Abre la botella.
+02  Susúrrate: «tú puedes».
+03  Échate bastante y con confianza.`;
+
+/**
+ * Envoltorio común.
+ *
  * El preheader es el texto que el cliente de correo muestra en la bandeja
  * después del asunto. Sin uno explícito, muestra el primer texto del cuerpo,
  * que suele ser "Ver en el navegador" o el alt de un logo.
@@ -95,48 +159,60 @@ Consultas sobre tus datos: ${CORREO_DATOS}`;
  * de Gmail y Outlook. Sin ellas esos clientes reinterpretan la paleta por su
  * cuenta —el naranja de campaña sobre todo— y el correo llega con colores que
  * nadie eligió.
+ *
+ * El <style> con la media query es el ÚNICO ajuste para pantalla angosta que
+ * un correo puede hacer. Gmail lo respeta; Outlook de escritorio ignora las
+ * media queries, pero es un cliente ancho, así que quedarse con la base inline
+ * es justo lo correcto ahí. Por eso los estilos inline son la versión segura y
+ * la media query solo aprieta: si un cliente la descarta, no se rompe nada.
  */
-function documento(preheader: string, tabla: string): string {
+function documento(preheader: string, filas: string): string {
   return `<!doctype html>
 <html lang="es"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width">
 <meta name="color-scheme" content="dark">
 <meta name="supported-color-schemes" content="dark">
+<style>
+@media only screen and (max-width:480px){
+  .e-marco{padding:24px 12px !important}
+  .e-cab{padding:8px 22px 26px !important}
+  .e-cuerpo{padding:24px 22px 26px !important}
+  .e-pie{padding:20px 22px 8px !important}
+  .e-pasos{padding:20px 20px !important}
+  .e-h1{font-size:25px !important}
+  .e-hilo{padding:0 22px !important}
+}
+</style>
 </head>
 <body style="margin:0;padding:0;background:${MARCA.ink};">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapaHtml(preheader)}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${MARCA.ink};">
-<tr><td align="center" style="padding:32px 16px;">
+<tr><td class="e-marco" align="center" style="padding:44px 16px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
-${tabla}
+${filas}
 </table>
 </td></tr></table>
 </body></html>`;
 }
 
-/** Molde sobrio: cabecera oscura, tarjeta naranja, pie oscuro. Lo usan la
-    confirmación y los avisos de suplente. */
-function envoltorio(preheader: string, contenido: string): string {
+/**
+ * Molde de las cuatro piezas: lockup, hilo, contenido, hilo, pie legal. Lo que
+ * cambia entre correos es el bloque central, no la estructura — así las cuatro
+ * se reconocen como la misma familia.
+ */
+function pieza(preheader: string, contenido: string): string {
   return documento(
     preheader,
     `${cabecera()}
-<tr><td style="background:${MARCA.confianza};">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+${hilo()}
+<tr><td class="e-cuerpo" style="padding:30px 32px 32px;font-family:${TIPOGRAFIA};">
 ${contenido}
-</table>
 </td></tr>
+${hilo()}
 ${pie()}`,
   );
 }
-
-const PASOS_HTML = `<p style="margin:0 0 6px;font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:${MARCA.white};">Si te lo ganas, así se usa</p>
-<p style="margin:0;font-size:15px;line-height:1.7;color:${MARCA.white};">01 · Abre la botella.<br>02 · Susúrrate: «tú puedes».<br>03 · Échate bastante y con confianza.</p>`;
-
-const PASOS_TEXTO = `Si te lo ganas, así se usa:
-01 · Abre la botella.
-02 · Susúrrate: «tú puedes».
-03 · Échate bastante y con confianza.`;
 
 export function plantilla(tipo: TipoCorreo, nombre: string): Plantilla {
   const quien = escapaHtml(primerNombre(nombre));
@@ -145,22 +221,16 @@ export function plantilla(tipo: TipoCorreo, nombre: string): Plantilla {
   if (tipo === "confirmacion") {
     return {
       asunto: "Recibimos tu inscripción — Eau de Confianza",
-      html: envoltorio(
-        "Recibimos tu inscripción. Si sales sorteado te escribimos acá mismo.",
-        `<tr><td style="padding:32px 28px 4px;">
-${imagen("/email/lockup-600.png", "Eau de Confianza · Riquelme + Betano", 240)}
-</td></tr>
-<tr><td style="padding:20px 28px 8px;font-family:${TIPOGRAFIA};">
-<h1 style="margin:0;font-size:26px;line-height:1.15;text-transform:uppercase;color:${MARCA.white};">Recibimos tu inscripción, ${quien}</h1>
-</td></tr>
-<tr><td style="padding:12px 28px 32px;font-family:${TIPOGRAFIA};">
-<p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:${MARCA.white};">Quedaste en el sorteo. Si sales sorteado, te escribimos a este mismo correo.</p>
-${PASOS_HTML}
-</td></tr>`,
+      html: pieza(
+        "Recibimos tu inscripción. Nos comunicaremos contigo.",
+        `${antetitulo("Inscripción confirmada")}
+${titular(`Recibimos tu inscripción, ${quien}`, MARCA.bone)}
+<p style="margin:18px 0 28px;font-size:16px;line-height:1.65;color:${CUERPO};">Nos comunicaremos contigo.</p>
+${PASOS_HTML}`,
       ),
       texto: `Recibimos tu inscripción, ${quienTexto}.
 
-Quedaste en el sorteo. Si sales sorteado, te escribimos a este mismo correo.
+Nos comunicaremos contigo.
 
 ${PASOS_TEXTO}
 
@@ -177,18 +247,17 @@ ${PIE_TEXTO}`,
    * entran y con qué plazo son las decisiones 03 y 04 del brief, que siguen
    * abiertas. Prometer acá un número o un plazo inventado es exactamente lo que
    * no se puede hacer en un correo con efectos legales.
+   *
+   * Y va SIN los pasos del perfume: son «si te lo ganas», y acá todavía no se
+   * ganó nada. Ponerlos sonaría a que sí.
    */
   return {
     asunto: "Quedaste como suplente — Eau de Confianza",
-    html: envoltorio(
+    html: pieza(
       "Quedaste como suplente. Si se libera un cupo, te avisamos acá mismo.",
-      `<tr><td style="padding:32px 28px 4px;">
-${imagen("/email/lockup-600.png", "Eau de Confianza · Riquelme + Betano", 240)}
-</td></tr>
-<tr><td style="padding:20px 28px 32px;font-family:${TIPOGRAFIA};">
-<h1 style="margin:0 0 14px;font-size:26px;line-height:1.15;text-transform:uppercase;color:${MARCA.white};">Quedaste como suplente, ${quien}</h1>
-<p style="margin:0;font-size:15px;line-height:1.6;color:${MARCA.white};">No saliste sorteado esta vez, pero quedaste en la lista de suplentes. Si se libera un cupo te escribimos a este mismo correo.</p>
-</td></tr>`,
+      `${antetitulo("Resultado del sorteo")}
+${titular(`Quedaste como suplente, ${quien}`, MARCA.bone)}
+<p style="margin:18px 0 0;font-size:16px;line-height:1.65;color:${CUERPO};">No saliste sorteado esta vez, pero quedaste en la lista de suplentes. Si se libera un cupo te escribimos a este mismo correo.</p>`,
     ),
     texto: `Quedaste como suplente, ${quienTexto}.
 
@@ -199,13 +268,20 @@ ${PIE_TEXTO}`,
 }
 
 /**
- * El correo de ganador rompe el molde a propósito: naranja de campaña de lado a
- * lado, titular grande y el lockup debajo. Es la única pieza del sistema que da
- * una buena noticia, y al abrirla tiene que notarse antes de leer una palabra
- * que no es otra confirmación de trámite.
+ * La buena noticia.
  *
- * `promovido` comparte maqueta porque es la misma noticia —se liberó un cupo y
- * es tuyo— y solo cambia cómo se llegó a ella.
+ * Comparte maqueta con el resto de las piezas —misma familia— pero pone el
+ * titular en naranja en vez de hueso. Sobre el ink da 5,6:1 de contraste, así
+ * que pasa AA incluso como texto normal, y usa el acento de campaña
+ * tipográficamente en lugar de como campo de color. Es lo que hace que el
+ * correo se sienta distinto al abrirlo sin necesitar una segunda maqueta.
+ *
+ * «Confiaste y ganaste» y no «felicidades»: amarra con el nombre de la
+ * fragancia, con el CTA del sitio y con las instrucciones de la carta.
+ * «Felicidades» lo podría firmar cualquier marca.
+ *
+ * `promovido` comparte titular porque es la misma noticia —el cupo ya es suyo—
+ * y solo cambia el antetítulo, que explica cómo se llegó a ella.
  *
  * No se nombra el premio, ni un plazo, ni una forma de entrega: las decisiones
  * 03 y 04 del brief siguen abiertas. El correo dice lo único que se sabe con
@@ -217,41 +293,24 @@ function ganaste(
   quienTexto: string,
 ): Plantilla {
   const promovido = tipo === "promovido";
-  const entradilla = promovido
-    ? "Se liberó un cupo y quedó para ti."
-    : "Saliste sorteado.";
+  const kicker = promovido ? "Se liberó un cupo y quedó para ti" : "Saliste sorteado";
 
   return {
     asunto: promovido
       ? "¡Se liberó un cupo y es tuyo! — Eau de Confianza"
-      : "¡Felicidades, ganaste! — Eau de Confianza",
-    html: documento(
-      `${entradilla} El equipo se contactará contigo para la entrega.`,
-      `${cabecera()}
-<tr><td align="center" style="padding:44px 28px 36px;background:${MARCA.confianza};font-family:${TIPOGRAFIA};text-align:center;">
-
-<p style="margin:0 0 14px;font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:${MARCA.white};">${escapaHtml(entradilla)}</p>
-
-<h1 style="margin:0 0 18px;font-size:38px;line-height:1.05;text-transform:uppercase;color:${MARCA.white};">¡Felicidades,<br>ganaste!</h1>
-
-<p style="margin:0 0 30px;font-size:16px;line-height:1.6;color:${MARCA.white};">${quien}, el equipo se contactará contigo para gestionar la entrega de los premios.</p>
-
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:0 0 26px;">
-${imagen("/email/lockup-600.png", "Eau de Confianza · Riquelme + Betano", 260, "margin:0 auto;")}
-</td></tr></table>
-
-<p style="margin:0;font-size:14px;line-height:1.75;color:${MARCA.white};">Abre la botella.<br>Susúrrate: «tú puedes».<br>Échate bastante y con confianza.</p>
-
-</td></tr>
-${pie()}`,
+      : "¡Confiaste y ganaste! — Eau de Confianza",
+    html: pieza(
+      `${kicker}. El equipo se contactará contigo para la entrega.`,
+      `${antetitulo(kicker)}
+${titular("¡Confiaste <br>y ganaste!", MARCA.confianza)}
+<p style="margin:18px 0 28px;font-size:16px;line-height:1.65;color:${CUERPO};">${quien}, el equipo se contactará contigo para gestionar la entrega de los premios.</p>
+${PASOS_HTML}`,
     ),
-    texto: `¡Felicidades, ganaste!
+    texto: `¡Confiaste y ganaste!
 
-${entradilla} ${quienTexto}, el equipo se contactará contigo para gestionar la entrega de los premios.
+${kicker}. ${quienTexto}, el equipo se contactará contigo para gestionar la entrega de los premios.
 
-Abre la botella.
-Susúrrate: «tú puedes».
-Échate bastante y con confianza.
+${PASOS_TEXTO}
 
 ${PIE_TEXTO}`,
   };

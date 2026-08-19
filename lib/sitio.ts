@@ -1,7 +1,7 @@
 /**
  * URL absoluta del sitio, para los enlaces e imágenes del correo.
  *
- * Un correo se abre fuera del sitio: una ruta como `/email/iso-96.png` no
+ * Un correo se abre fuera del sitio: una ruta como `/email/lockup-600.png` no
  * resuelve contra nada. Todo lo que salga por correo necesita el origen delante.
  */
 
