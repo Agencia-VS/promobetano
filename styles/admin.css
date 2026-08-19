@@ -1,0 +1,376 @@
+/*
+ * Panel de administración.
+ *
+ * Es la única superficie de escritorio del proyecto (§1 del brief: "Equipo,
+ * escritorio"), así que no hereda nada de la maqueta móvil de la promo: acá
+ * manda la densidad de información, no la composición de campaña. Usa los
+ * mismos tokens de marca para que no aparezca un cuarto naranja, pero sobre
+ * fondo oscuro y con tipografía de interfaz.
+ */
+
+.adm {
+  min-height: 100dvh;
+  background: var(--color-ink);
+  color: var(--color-bone);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.adm__barra {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 14px clamp(16px, 3vw, 40px);
+  background: rgba(10, 6, 5, 0.92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(138, 60, 24, 0.45);
+}
+
+.adm__marca {
+  font-family: var(--font-title);
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-confianza);
+  white-space: nowrap;
+}
+
+.adm__nav {
+  display: flex;
+  gap: 4px;
+  margin-inline-start: auto;
+  align-items: center;
+}
+
+.adm__nav a {
+  padding: 7px 14px;
+  border-radius: 4px;
+  color: rgba(249, 241, 233, 0.72);
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.adm__nav a:hover,
+.adm__nav a[aria-current="page"] {
+  background: rgba(249, 241, 233, 0.09);
+  color: var(--color-bone);
+}
+
+.adm__cuerpo {
+  padding: clamp(20px, 3vw, 36px);
+  max-width: 1280px;
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.adm__rejilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+.tarjeta {
+  background: rgba(249, 241, 233, 0.045);
+  border: 1px solid rgba(138, 60, 24, 0.4);
+  border-radius: 8px;
+  padding: 18px 20px;
+}
+
+.tarjeta__titulo {
+  margin: 0 0 14px;
+  font-family: var(--font-title);
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(249, 241, 233, 0.6);
+}
+
+/* Cifras del resumen. Tabulares para que las columnas no bailen al refrescar. */
+.cifras {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 14px;
+}
+
+.cifra__valor {
+  font-family: var(--font-title);
+  font-weight: 800;
+  font-size: 26px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.cifra__nombre {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(249, 241, 233, 0.55);
+  margin-top: 5px;
+}
+
+/* ── Estado del concurso ──────────────────────────────────────────────────── */
+
+.estado {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.estado__punto {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.estado--abierto .estado__punto {
+  background: #35c46a;
+  box-shadow: 0 0 0 4px rgba(53, 196, 106, 0.18);
+}
+
+.estado--cerrado .estado__punto,
+.estado--sin_configurar .estado__punto {
+  background: var(--color-confianza);
+  box-shadow: 0 0 0 4px rgba(255, 57, 0, 0.16);
+}
+
+.estado--antes .estado__punto {
+  background: #d8a13a;
+  box-shadow: 0 0 0 4px rgba(216, 161, 58, 0.18);
+}
+
+.estado__texto {
+  font-family: var(--font-title);
+  font-weight: 800;
+  font-size: 17px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.estado__fuente {
+  font-size: 12.5px;
+  color: rgba(249, 241, 233, 0.62);
+}
+
+/* ── Controles ────────────────────────────────────────────────────────────── */
+
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.btn {
+  appearance: none;
+  border: 1px solid rgba(138, 60, 24, 0.6);
+  background: transparent;
+  color: var(--color-bone);
+  font-family: var(--font-title);
+  font-weight: 800;
+  font-size: 11.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 10px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.btn:hover:not(:disabled) {
+  background: rgba(249, 241, 233, 0.09);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn--primario {
+  background: var(--color-confianza);
+  border-color: var(--color-confianza);
+  color: #fff;
+}
+
+.btn--primario:hover:not(:disabled) {
+  background: #e23300;
+}
+
+.btn--activo {
+  border-color: var(--color-bone);
+  background: rgba(249, 241, 233, 0.14);
+}
+
+.btn--peligro {
+  border-color: rgba(255, 57, 0, 0.75);
+  color: var(--color-confianza);
+}
+
+.btn--chico {
+  padding: 6px 10px;
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+}
+
+/* ── Campos ───────────────────────────────────────────────────────────────── */
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.campo > span {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(249, 241, 233, 0.55);
+}
+
+.campo input,
+.campo select {
+  background: rgba(10, 6, 5, 0.6);
+  border: 1px solid rgba(138, 60, 24, 0.55);
+  border-radius: 4px;
+  color: var(--color-bone);
+  padding: 9px 11px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.campo input:focus,
+.campo select:focus {
+  outline: none;
+  border-color: var(--color-confianza);
+}
+
+.fila-campos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+/* ── Tablas ───────────────────────────────────────────────────────────────── */
+
+.tabla-caja {
+  /* El contenido ancho scrollea dentro de su caja: la página nunca scrollea en
+     horizontal. */
+  overflow-x: auto;
+}
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.tabla th {
+  text-align: left;
+  font-family: var(--font-title);
+  font-weight: 800;
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(249, 241, 233, 0.5);
+  padding: 8px 12px 8px 0;
+  border-bottom: 1px solid rgba(138, 60, 24, 0.45);
+}
+
+.tabla td {
+  padding: 9px 12px 9px 0;
+  border-bottom: 1px solid rgba(249, 241, 233, 0.07);
+  font-variant-numeric: tabular-nums;
+}
+
+.tabla tr:hover td {
+  background: rgba(249, 241, 233, 0.035);
+}
+
+.pastilla {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid currentColor;
+}
+
+.pastilla--ganador {
+  color: #35c46a;
+}
+.pastilla--suplente {
+  color: rgba(249, 241, 233, 0.65);
+}
+.pastilla--promovido {
+  color: #7db8ff;
+}
+.pastilla--declinado {
+  color: var(--color-confianza);
+}
+.pastilla--rebote,
+.pastilla--queja {
+  color: var(--color-confianza);
+}
+
+/* ── Avisos ───────────────────────────────────────────────────────────────── */
+
+.aviso {
+  padding: 11px 14px;
+  border-radius: 4px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.aviso--error {
+  background: rgba(60, 0, 0, 0.55);
+  border: 1px solid rgba(255, 57, 0, 0.5);
+}
+
+.aviso--ok {
+  background: rgba(53, 196, 106, 0.12);
+  border: 1px solid rgba(53, 196, 106, 0.45);
+}
+
+.aviso--nota {
+  background: rgba(249, 241, 233, 0.05);
+  border: 1px solid rgba(138, 60, 24, 0.4);
+  color: rgba(249, 241, 233, 0.72);
+}
+
+.vacio {
+  color: rgba(249, 241, 233, 0.5);
+  font-size: 13px;
+  padding: 8px 0;
+}
+
+/* ── Login ────────────────────────────────────────────────────────────────── */
+
+.login {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--color-ink);
+}
+
+.login__caja {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
