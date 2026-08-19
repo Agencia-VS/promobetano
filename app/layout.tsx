@@ -14,7 +14,15 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+/**
+ * `modal` es una ranura paralela: la llena app/@modal/(.)inscripcion cuando se
+ * navega a /inscripcion desde dentro del sitio, y app/@modal/default.tsx —que
+ * no pinta nada— en cualquier otro caso.
+ */
+export default function RootLayout({
+  children,
+  modal,
+}: LayoutProps<"/">) {
   return (
     <html lang="es" className={`${mdNichrome.variable} ${haffer.variable}`}>
       {/*
@@ -23,7 +31,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         en cada carga. suppressHydrationWarning solo silencia este nodo: las
         diferencias reales dentro de children se siguen reportando.
       */}
-      <body suppressHydrationWarning>{children}</body>
+      <body suppressHydrationWarning>
+        {children}
+        {modal}
+      </body>
     </html>
   );
 }

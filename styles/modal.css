@@ -1,0 +1,151 @@
+/*
+ * Modal de inscripción.
+ *
+ * Lo produce una ruta interceptora: /inscripcion sigue siendo una ruta real
+ * —enlace directo, recarga, botón atrás, recuperable si el navegador mata la
+ * pestaña— y solo se pinta como modal cuando se llega navegando desde la
+ * portada. Esa es la diferencia con el modal del repo anterior, que no tenía
+ * URL: allí el botón atrás sacaba del sitio en vez de cerrar el formulario, y
+ * una caída de señal a mitad de llenado no dejaba a dónde volver.
+ *
+ * Por debajo de 1024px NO hay modal: el panel ocupa la pantalla completa, sin
+ * overlay ni desenfoque. En un teléfono un modal ya ocupa toda la pantalla, y
+ * la versión flotante añade el problema real de iOS —el teclado desplaza el
+ * viewport visual y arrastra los elementos con position:fixed— a cambio de
+ * nada. Ese es el riesgo que el brief documenta al prohibir el formulario en
+ * modal, y así queda evitado sin renunciar al diseño en escritorio.
+ */
+
+.modal-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: var(--color-confianza);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-panel {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 40px max(24px, env(safe-area-inset-left))
+    calc(40px + env(safe-area-inset-bottom))
+    max(24px, env(safe-area-inset-right));
+}
+
+/* El botón de cierre en móvil va dentro, arriba a la derecha, con área táctil
+   de 48px: fuera del panel no habría dónde ponerlo. */
+.modal-cerrar {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(60, 0, 0, 0.45);
+  background: rgba(10, 6, 5, 0.55);
+  color: var(--color-bone);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background 0.16s ease,
+    transform 0.12s ease;
+}
+
+.modal-cerrar:hover {
+  background: var(--color-ink);
+}
+
+@media (min-width: 1024px) {
+  .modal-fondo {
+    background: rgba(4, 2, 1, 0.78);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: block;
+    padding: clamp(1rem, 5vh, 4rem) 1rem;
+    animation: modal-entra 0.25s ease both;
+  }
+
+  .modal-panel {
+    /*
+     * Solo en escritorio, que es donde el panel es oscuro. En móvil el panel
+     * ocupa la pantalla con el naranja de campaña, y ahí el botón tiene que
+     * seguir siendo negro: naranja sobre naranja no se ve.
+     */
+    --cta-fondo: var(--color-confianza);
+    --cta-texto: #ffffff;
+
+    width: 100%;
+    max-width: 460px;
+    margin-inline: auto;
+    flex: initial;
+    gap: 16px;
+    padding: 26px 30px 30px;
+    background: rgba(8, 4, 2, 0.88);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 57, 0, 0.2);
+    border-radius: 12px;
+    box-shadow:
+      0 30px 80px rgba(0, 0, 0, 0.6),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    animation: modal-aparece 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  /* En escritorio sale del panel, como en la referencia. */
+  .modal-cerrar {
+    top: -14px;
+    right: -14px;
+    width: 38px;
+    height: 38px;
+    font-size: 20px;
+    border-color: rgba(255, 57, 0, 0.3);
+    background: var(--color-ink);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  }
+
+  .modal-cerrar:hover {
+    background: var(--color-confianza);
+    transform: rotate(90deg);
+  }
+}
+
+@keyframes modal-entra {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes modal-aparece {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/*
+ * Dentro del modal los campos se comprimen, pero NO por debajo de 16px: en
+ * Safari iOS un input de menos de 16px hace que el navegador acerque la página
+ * al enfocarlo y descoloca la maqueta entera. La referencia los bajaba a
+ * 0,83rem (≈13px) y eso es exactamente el defecto que el brief prohíbe.
+ */
+@media (min-width: 1024px) {
+  .modal-panel input[type="text"],
+  .modal-panel input[type="email"],
+  .modal-panel input[type="tel"] {
+    height: 46px;
+  }
+}

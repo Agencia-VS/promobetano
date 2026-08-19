@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { supabasePublico } from "@/lib/supabase/publico";
-import { inscripcionesAbiertas } from "@/lib/concurso";
+import { estadoVigente } from "@/lib/concurso-servidor";
 import { normalizaTelefono, valida } from "@/lib/inscripcion";
 import { HEADER_ORIGEN, ORIGEN_DIRECTO, slugValido } from "@/lib/origen";
 
@@ -21,7 +21,11 @@ export const dynamic = "force-dynamic";
  * reintentar (regla dura 8).
  */
 export async function POST(request: NextRequest) {
-  if (!inscripcionesAbiertas()) {
+  // Se comprueba acá y no solo en la página: quien tenga el formulario abierto
+  // desde antes del cierre —o desde antes de que alguien lo cierre a mano—
+  // puede enviarlo igual.
+  const { estado } = await estadoVigente();
+  if (estado !== "abierto") {
     return NextResponse.json({ error: "cerrado" }, { status: 409 });
   }
 

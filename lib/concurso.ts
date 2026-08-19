@@ -115,3 +115,77 @@ export function etiquetaVentana(ahora: Date = new Date()): string | null {
   const hasta = cierre();
   return hasta ? `Hasta el ${fechaCorta(hasta)}` : null;
 }
+
+/**
+ * De dónde salió el estado vigente. El panel necesita distinguirlo: no es lo
+ * mismo "cerrado porque pasó la fecha" que "cerrado porque alguien lo cerró a
+ * mano", y confundirlos lleva a esperar que se abra solo cuando no va a pasar.
+ */
+export type FuenteEstado = "manual" | "calendario";
+
+export type EstadoEfectivo = {
+  estado: EstadoConcurso;
+  fuente: FuenteEstado;
+};
+
+/**
+ * Combina el interruptor manual con el calendario. Función pura: recibe el
+ * interruptor ya leído, para poder probarla sin base de datos.
+ *
+ * El interruptor pisa al calendario en ambos sentidos —abre fuera de fecha y
+ * cierra dentro de ella— porque los dos casos ocurren: un panel que se instaló
+ * tarde y una activación que hay que cortar de urgencia.
+ */
+export function estadoEfectivo(
+  manual: boolean | null | undefined,
+  ahora: Date = new Date(),
+): EstadoEfectivo {
+  if (manual === true) return { estado: "abierto", fuente: "manual" };
+  if (manual === false) return { estado: "cerrado", fuente: "manual" };
+  return { estado: estadoConcurso(ahora), fuente: "calendario" };
+}
+
+/**
+ * Texto para cuando no se aceptan inscripciones.
+ *
+ * Vive acá y no en la página porque lo usan dos superficies —la ruta completa y
+ * el modal— y un mensaje legal-adyacente que diverge entre ellas es peor que
+ * uno imperfecto: la persona ve uno u otro según cómo llegó.
+ *
+ * Los tres estados dicen cosas distintas. Decirle "las inscripciones cerraron"
+ * a alguien que llegó antes de que abrieran —o peor, porque nadie cargó las
+ * fechas— es mentirle: se va creyendo que perdió su oportunidad.
+ */
+export function textoCierre(
+  estado: EstadoConcurso,
+  fuente: FuenteEstado,
+): { titulo: string; detalle: string } {
+  const desde = inicio();
+  const hasta = cierre();
+
+  if (estado === "antes") {
+    return {
+      titulo: "Todavía no abrimos",
+      detalle: desde
+        ? `Las inscripciones abren el ${fechaYHora(desde)}. Vuelve a escanear el código ese día.`
+        : "Vuelve a escanear el código más tarde.",
+    };
+  }
+
+  if (estado === "sin_configurar") {
+    return {
+      titulo: "Inscripciones en pausa",
+      detalle: "Vuelve a escanear el código más tarde.",
+    };
+  }
+
+  return {
+    titulo: "Las inscripciones cerraron",
+    detalle:
+      fuente === "manual"
+        ? "Las inscripciones están cerradas por ahora. Vuelve a intentar más tarde."
+        : hasta
+          ? `El plazo terminó el ${fechaYHora(hasta)}. Gracias por pasar.`
+          : "Gracias por pasar.",
+  };
+}

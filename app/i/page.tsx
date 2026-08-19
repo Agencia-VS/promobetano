@@ -5,7 +5,8 @@ import { Lockup } from "@/components/Lockup";
 import { Footer18 } from "@/components/Footer18";
 import { InfoBadge } from "@/components/InfoBadge";
 import { HEADER_ORIGEN, ORIGEN_DIRECTO, etiquetaPanel } from "@/lib/origen";
-import { etiquetaVentana } from "@/lib/concurso";
+import { cierre, fechaCorta } from "@/lib/concurso";
+import { estadoVigente } from "@/lib/concurso-servidor";
 
 // La placa muestra la ventana de inscripción contra el reloj de cada visita.
 export const dynamic = "force-dynamic";
@@ -13,9 +14,20 @@ export const dynamic = "force-dynamic";
 export default async function PortadaPage() {
   const h = await headers();
   const origen = h.get(HEADER_ORIGEN) ?? ORIGEN_DIRECTO;
-  // null cuando no hay fechas cargadas: la placa marca "pendiente" en vez de
-  // inventar una fecha.
-  const ventana = etiquetaVentana();
+  // La placa refleja el estado vigente, interruptor manual incluido: si el
+  // equipo cierra a mano, la portada no puede seguir invitando a inscribirse.
+  const { estado } = await estadoVigente();
+  const hasta = cierre();
+  const ventana =
+    estado === "abierto"
+      ? hasta
+        ? `Hasta el ${fechaCorta(hasta)}`
+        : "Abiertas"
+      : estado === "antes"
+        ? "Abren pronto"
+        : estado === "cerrado"
+          ? "Cerradas"
+          : null;
 
   return (
     <Screen
