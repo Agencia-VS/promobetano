@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge18 } from "./Badge18";
+import { BetanoLogo } from "./Lockup";
 import { FormularioInscripcion } from "./FormularioInscripcion";
 import { PasosPerfume, SelloConfirmado } from "./Confirmacion";
 import { CORREO_DATOS } from "@/lib/contacto";
@@ -48,9 +49,24 @@ export function ContenidoModalInscripcion({ origen }: { origen: string }) {
 
   return (
     <>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <Badge18 size={26} />
-        <span style={estiloAntetitulo}>Inscripción</span>
+      {/* La marca vuelve a aparecer acá porque el modal tapa la portada: quien
+          está llenando el formulario ya no ve el lockup que lo trajo, y un
+          panel con cuatro campos y tres consentimientos sin ninguna firma
+          visible se parece demasiado a cualquier otro formulario. */}
+      <div
+        className="modal-fila-marca"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <Badge18 size={26} />
+          <span style={estiloAntetitulo}>Inscripción</span>
+        </div>
+        <BetanoLogo width={104} sizes="104px" />
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

@@ -38,7 +38,7 @@ export default async function PortadaPage() {
         <>
           <Lockup
             width="clamp(268px, 26vw, 336px)"
-            sizes="(min-width: 1024px) 336px, 268px"
+            sizes="(min-width: 768px) 336px, 268px"
             priority
             className="centrado-movil"
             // El centrado horizontal lo pone .centrado-movil, que en escritorio lo

@@ -42,7 +42,7 @@ export default async function InscripcionPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
             <Lockup
               width="clamp(240px, 24vw, 320px)"
-              sizes="(min-width: 1024px) 320px, 240px"
+              sizes="(min-width: 768px) 320px, 240px"
               priority
               className="centrado-movil"
               style={{ display: "block" }}
@@ -88,7 +88,7 @@ export default async function InscripcionPage() {
           <div className="fila-marca">
             <BetanoLogo
               width="clamp(124px, 11vw, 158px)"
-              sizes="(min-width: 1024px) 158px, 124px"
+              sizes="(min-width: 768px) 158px, 124px"
             />
             <Badge18 size={28} />
           </div>

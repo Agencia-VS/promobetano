@@ -18,7 +18,11 @@
  * ya instalado en el sistema.
  */
 import { chromium } from "playwright";
-const B = "http://localhost:3000";
+// E2E_BASE permite apuntar a un build de produccion (next start) en vez del
+// servidor de desarrollo. Importa: en `next dev` el prefetch esta desactivado
+// por diseño, asi que la apertura instantanea del modal SOLO se puede
+// comprobar de verdad contra produccion.
+const B = process.env.E2E_BASE ?? "http://localhost:3000";
 const ok = (c, m) => console.log(`${c ? "PASS" : "FALLA"}  ${m}`);
 let fallas = 0;
 const check = (c, m) => { if (!c) fallas++; ok(c, m); };
@@ -399,12 +403,11 @@ console.log("\n=== 12. Doble submit ===");
   await ctx.close();
 }
 
-console.log("\n=== 13. El modal se abre con efecto, tambien en celular ===");
+console.log("\n=== 13. El modal se comporta igual en celular que en PC ===");
 {
-  // El viewport de nueva() es 390x844: celular. Las dos animaciones vivian
-  // dentro de @media (min-width:1024px), asi que aca no habia NINGUNA, y como
-  // el fondo del modal es el mismo naranja de la portada el cambio no se
-  // percibia en absoluto.
+  // El viewport de nueva() es 390x844: celular. Antes el panel ocupaba la
+  // pantalla entera y no habia ninguna animacion —las dos vivian dentro de
+  // @media (min-width:1024px)— asi que abrirlo era indistinguible de navegar.
   const { ctx, p } = await nueva();
   await p.goto(B + "/edad?next=%2Fi", { waitUntil: "domcontentloaded" });
   await p.getByRole("button", { name: /tengo 18/i }).click();
@@ -435,9 +438,26 @@ console.log("\n=== 13. El modal se abre con efecto, tambien en celular ===");
   });
 
   check(anim.fondo.includes("modal-entra"), `el fondo entra con fundido (${anim.fondo.join(",") || "ninguna"})`);
-  check(anim.panel.includes("modal-sube"), `el panel sube en celular (${anim.panel.join(",") || "ninguna"})`);
+  check(anim.panel.includes("modal-aparece"), `el panel entra igual que en PC (${anim.panel.join(",") || "ninguna"})`);
+
+  // Tarjeta flotante, no pantalla completa: el panel tiene que ser mas angosto
+  // que el viewport y dejar fondo visible a los lados para poder cerrarlo
+  // tocando fuera, igual que en escritorio.
+  const caja = await p.locator(".modal-panel").boundingBox();
+  check(caja !== null && caja.width < 390 - 8, `el panel flota, no ocupa la pantalla (${caja ? Math.round(caja.width) : "?"}px de 390)`);
+  check(caja !== null && caja.y > 4, `queda fondo visible arriba (${caja ? Math.round(caja.y) : "?"}px)`);
+
+  const radio = await p.locator(".modal-panel").evaluate((el) => getComputedStyle(el).borderRadius);
+  check(parseFloat(radio) > 0, `la tarjeta tiene esquinas redondeadas (${radio})`);
 
   await p.waitForSelector("#f-nombre", { timeout: 8000 });
+
+  // El logo de Betano acompana al formulario: el modal tapa la portada, asi que
+  // sin el la persona llena sus datos sin ninguna marca a la vista. Se comprueba
+  // DESPUES de esperar al formulario: hasta entonces el panel muestra el
+  // esqueleto, que no lo lleva.
+  const logo = await p.locator('.modal-panel img[alt="Betano"]').count();
+  check(logo === 1, `el logo de Betano esta en el formulario (${logo})`);
   const montajes = await p.evaluate(() => window.__montajes);
   check(montajes === 1, `el marco se monta una sola vez, sin repetir la animacion (${montajes})`);
 

@@ -9,13 +9,19 @@
  *
  * Tres tramos:
  *   < 640px    móvil, exactamente la composición original.
- *   640–1023   una columna, contenido acotado y centrado. El pie sigue a
+ *   640–767    una columna, contenido acotado y centrado. El pie sigue a
  *              sangre: acotar el contenedor entero dejaba franjas naranjas a
  *              los lados de la banda negra.
- *   >= 1024px  dos columnas. Izquierda la pieza de marca (halo, lockup,
+ *   >= 768px   dos columnas. Izquierda la pieza de marca (halo, lockup,
  *              titular), derecha el panel de acción (CTA o formulario). Es la
  *              misma jerarquía del móvil —primero la promesa, después el
  *              acto— girada 90 grados.
+ *
+ * El corte de dos columnas estaba en 1024px, que es el iPad en HORIZONTAL: en
+ * vertical (768–834) la tableta caía en el tramo de una columna y se llevaba
+ * los anillos del móvil estirados sobre una pantalla grande, con un vacío
+ * naranja de varios cientos de píxeles bajo el CTA. A 768 la tableta recibe el
+ * trato de escritorio —key visual en vez de anillos— en las dos orientaciones.
  *
  * Acá van solo los quiebres. Los tamaños tipográficos se resuelven con clamp()
  * en cada componente: son continuos y no necesitan punto de quiebre.
@@ -91,7 +97,7 @@
   gap: 16px;
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 768px) {
   .fila-marca {
     justify-content: flex-start;
     gap: 24px;
@@ -117,7 +123,7 @@
   }
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 768px) {
   /*
    * `clip` en vez de `hidden` para poder usar position:sticky en la columna de
    * marca: un ancestro con overflow:hidden crea un contenedor de scroll y
@@ -221,7 +227,7 @@
   display: none;
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 768px) {
   .fondo-pc {
     display: block;
     position: absolute;
@@ -302,7 +308,7 @@
   background: var(--halo-velo);
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 768px) {
   /*
    * Los anillos se apagan en escritorio. Nacieron para dar cuerpo a un fondo
    * naranja plano en el teléfono; con el key visual detrás se cruzan con la
@@ -367,6 +373,36 @@
  * alineada a la izquierda, y se lee como un descuadre. Dos clases en vez de
  * repetir la media en cada vista.
  */
+/*
+ * En móvil la columna de marca de la portada va centrada ENTERA. El lockup ya
+ * lo estaba por .centrado-movil, pero el titular y el párrafo seguían alineados
+ * a la izquierda justo debajo, y el escalón entre un logo centrado y un texto
+ * en bandera izquierda se lee como un descuadre, no como una decisión.
+ *
+ * Solo la portada: en el formulario la columna es una etiqueta de sección sobre
+ * campos alineados a la izquierda, y centrarla ahí sí rompería la lectura.
+ */
+.pantalla__grid--portada .pantalla__poster {
+  text-align: center;
+}
+
+/* El párrafo lleva max-width en ch, así que su caja es más angosta que la
+   columna: sin esto el texto queda centrado dentro de una caja pegada a la
+   izquierda. */
+.pantalla__grid--portada .pantalla__poster p {
+  margin-inline: auto;
+}
+
+@media (min-width: 768px) {
+  .pantalla__grid--portada .pantalla__poster {
+    text-align: left;
+  }
+
+  .pantalla__grid--portada .pantalla__poster p {
+    margin-inline: 0;
+  }
+}
+
 .centrado-movil {
   margin-inline: auto;
 }
@@ -376,7 +412,7 @@
   text-align: center;
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 768px) {
   .centrado-movil {
     margin-inline: 0;
   }

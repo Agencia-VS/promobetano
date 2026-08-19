@@ -37,7 +37,7 @@ export function FondoPC() {
   return (
     <div className="fondo-pc" aria-hidden>
       <picture>
-        <source media="(min-width: 1024px)" srcSet={srcSet} sizes={sizes} />
+        <source media="(min-width: 768px)" srcSet={srcSet} sizes={sizes} />
         <img src={PIXEL} alt="" decoding="async" fetchPriority="low" />
       </picture>
     </div>

@@ -11,7 +11,7 @@ import "@/styles/pantalla.css";
  *
  * El contenido entra por dos ranuras en vez de como children sueltos. En móvil
  * se apilan igual que antes —`poster` arriba, `accion` abajo— y a partir de
- * 1024px se convierten en las dos columnas del escritorio sin que las páginas
+ * 768px se convierten en las dos columnas del escritorio sin que las páginas
  * dupliquen su árbol. La alternativa era un children plano, y entonces la
  * rejilla de dos columnas no tendría a qué agarrarse.
  *

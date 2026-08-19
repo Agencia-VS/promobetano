@@ -19,7 +19,11 @@ import Image from "next/image";
  */
 
 const LOCKUP = { src: "/brand/lockup.png", w: 1245, h: 544 };
-const BETANO = { src: "/brand/betano-horizontal.png", w: 4000, h: 1049 };
+// Las medidas son las REALES del archivo. Estaban declaradas 4000x1049 —las
+// del export original— pero el PNG se rehizo a 372x98 sin actualizarlas: next/image
+// generaba un srcset con anchos que el archivo no puede dar, y como nunca hace
+// upscale, servía el mismo archivo para todas las entradas.
+const BETANO = { src: "/brand/betano-horizontal.png", w: 372, h: 98 };
 
 /**
  * `width` acepta una longitud CSS ademas de un numero, para que la portada
