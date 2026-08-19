@@ -5,11 +5,24 @@ Cristián Riquelme): QR de panel → puerta 18+ → portada → formulario →
 confirmación. Implementa las pantallas diseñadas en Claude Design a partir del
 brief técnico del 18 de agosto de 2026.
 
-## ⚠️ Estado: NO listo para producción
+## Estado
 
-El frontend está completo y verificado, pero **no hay backend**: el formulario
-no guarda nada en ninguna parte y no se envía ningún correo. Lo que falta no es
-código de UI (ver [Qué falta](#qué-falta-para-producción)).
+El **flujo público está completo**: portada, puerta 18+, formulario, alta contra
+Supabase, encolado del correo de confirmación y drenaje por cron. El esquema de
+base está escrito y verificado contra un PostgreSQL 16 real.
+
+Lo que falta para producción es el panel de administración, el webhook de
+rebotes de Resend y las respuestas del cliente que siguen abiertas
+(ver [Qué falta](#qué-falta-para-producción)).
+
+La ventana de inscripción se configura por variable de entorno. Fuera de ella
+`/inscripcion` no muestra el formulario, así que **para trabajar en el
+formulario hay que abrir la ventana**:
+
+```bash
+CONCURSO_INICIO=2020-01-01T00:00:00-04:00 \
+CONCURSO_CIERRE=2100-01-01T00:00:00-04:00 npm run dev
+```
 
 ## Rutas
 
@@ -21,6 +34,8 @@ código de UI (ver [Qué falta](#qué-falta-para-producción)).
 | `/inscripcion` | Formulario de inscripción |
 | `/listo` | Confirmación |
 | `/bases` | Bases y condiciones (borrador, requiere abogado) |
+| `/api/inscripcion` | Alta: revalida en servidor y llama a la RPC `crear_inscripcion` |
+| `/api/cron/email` | Drenaje de `email_outbox` por lotes de 100 (Vercel Cron) |
 | `proxy.ts` | Exige la puerta 18+ y resuelve la atribución de panel |
 
 ## Decisiones que conviene conocer
@@ -65,23 +80,26 @@ ya instalado).
 
 ## Qué falta para producción
 
-Bloqueantes que **no son código de UI**:
-
-1. **Backend.** Proyecto Supabase nuevo con el esquema del brief
-   (`inscripciones`, `email_outbox`, `sorteos`), RLS, y la RPC de listado por
-   cursor. Hoy el submit solo navega a `/listo`.
-2. **Correo.** Plan de Resend dimensionado por duración de campaña, dominio con
-   SPF/DKIM/DMARC, cola `email_outbox` con cron y webhooks de rebote.
-3. **Antiabuso.** Cloudflare Turnstile verificado en el servidor, índices únicos
-   sobre documento y correo normalizados, Vercel Firewall.
-4. **Bases legales.** `/bases` es un andamio con la estructura de la Ley 21.719
-   y cada dato pendiente marcado; necesita redacción y revisión de un abogado.
-5. **Contacto de datos personales.** `lib/contacto.ts` usa un dominio reservado
-   por la RFC 2606 a propósito. Reemplazar por la casilla real del responsable.
-6. **Lista de paneles.** Completar `PANELES` en `lib/origen.ts` antes de generar
+1. **Aplicar el esquema.** Las migraciones de `supabase/migrations/` están
+   escritas y probadas, pero hay que correrlas contra el proyecto real y cargar
+   las variables (ver `.env.example`).
+2. **Dominio del remitente.** SPF, DKIM y DMARC verificados en Resend antes del
+   primer envío; sin eso los correos entran a spam.
+3. **Contacto de datos personales.** `NEXT_PUBLIC_CORREO_DATOS` sigue con el
+   dominio reservado por la RFC 2606. Es un bloqueante legal.
+4. **Datos pendientes de las bases.** `/bases` marca en pantalla cada dato sin
+   definir: fecha del sorteo, premio, cantidad de ganadores y suplentes, rol de
+   Betano en el tratamiento.
+5. **Lista de paneles.** Completar `PANELES` en `lib/origen.ts` antes de generar
    e imprimir los QR.
+6. **Webhook de rebotes.** La función `registrar_evento_email` ya existe en la
+   base; falta la ruta que reciba y verifique la firma de Resend.
 7. **Panel de administración** y **prueba de carga** con 10.000 altas.
 
-Respuestas pendientes del brief que bloquean lo anterior: duración de la
-activación, sorteo único o diario, cantidad de ganadores y premio, malls y
-paneles, dominio y control del DNS, responsable del tratamiento.
+Opcional y no bloqueante: Cloudflare Turnstile. Los índices únicos sobre RUT y
+correo normalizados ya impiden la inscripción duplicada, que es lo que protege
+la integridad del sorteo.
+
+Respuestas del cliente que siguen abiertas: sorteo único o diario, cantidad de
+ganadores y premio, canje presencial, malls y paneles, y si los datos van a un
+CRM de Betano.

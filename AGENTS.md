@@ -40,19 +40,19 @@ La app tiene exactamente cinco superficies:
 
 ## 2. Estado del proyecto
 
-**Este repositorio está en blanco. Nada de lo descrito abajo existe todavía. No asumas que un archivo está ahí: verifícalo.**
+**El flujo público está construido y el esquema de base escrito; el panel de administración no existe.** Igual vale la advertencia original: no asumas que un archivo está ahí, verifícalo. La columna de estado de la tabla dice qué está hecho de verdad y qué falta dentro de cada bloque.
 
 El orden de los bloques importa. Los tres primeros tienen dependencias externas — contratación, DNS, imprenta — y si se dejan para el final bloquean el lanzamiento aunque el código esté listo.
 
 | # | Bloque | Depende de | Estado |
 |---|---|---|---|
 | 1 | Contratación y DNS: plan de Resend, dominio con SPF/DKIM/DMARC, proyecto Supabase nuevo | Decisiones 01 y 06 | ☐ |
-| 2 | Esquema y RPC: `inscripciones`, `email_outbox`, `sorteos`, `sorteo_resultados`, índices, `listar_inscripciones`, `ejecutar_sorteo`, RLS | Decisiones 02 y 03 | ☐ |
+| 2 | Esquema y RPC: `inscripciones`, `email_outbox`, `sorteos`, `sorteo_resultados`, índices, `listar_inscripciones`, `ejecutar_sorteo`, RLS | Decisiones 02 y 03 | ☑ escrito y verificado en `supabase/migrations/` — **falta aplicarlo a un proyecto real** (bloqueado por el bloque 1). El sorteo quedó parametrizado (`ventana_desde/hasta`, `n_ganadores`, `n_suplentes`) para no inventar las decisiones 02 y 03: cuando se respondan se cargan filas, no se toca el esquema |
 | 3 | QR y slugs: lista de paneles, generación de QR con `?p=`, entrega a imprenta | Decisión 05 | ☐ |
-| 4 | Formulario móvil: portada, ruta propia, tokens, halo en CSS, validaciones, Turnstile, borrador local | Bloque 2 | ☐ |
-| 5 | Cola de correo: encolado en el alta, cron de lote, plantillas, webhooks de rebote | Bloques 1 y 2 | ☐ |
+| 4 | Formulario móvil: portada, ruta propia, tokens, halo en CSS, validaciones, Turnstile, borrador local | Bloque 2 | ☑ salvo Turnstile. Incluye además el layout de escritorio a dos columnas (`styles/pantalla.css`) y la ventana de inscripción por variable de entorno (`lib/concurso.ts`). Turnstile quedó fuera a propósito: los índices únicos de la base ya cubren el duplicado, que es lo que protege la integridad del sorteo |
+| 5 | Cola de correo: encolado en el alta, cron de lote, plantillas, webhooks de rebote | Bloques 1 y 2 | ☑ salvo el webhook de rebotes. El encolado lo hace la propia RPC del alta, `/api/cron/email` drena de a 100 con `for update skip locked` y `vercel.json` lo agenda. La función `registrar_evento_email` ya existe en la base: falta la ruta que verifique la firma de Resend |
 | 6 | Panel de administración: login, listado por cursor, buscador por RPC, export transmitido, sorteo, cascada persistida | Bloque 2 | ☐ |
-| 7 | Bases legales: redacción nueva y revisión por abogado | Decisiones 03 y 09 | ☐ |
+| 7 | Bases legales: redacción nueva y revisión por abogado | Decisiones 03 y 09 | ◐ adaptadas desde las del concurso anterior con los datos del responsable (AGENCIA VS SPA) y la finalidad de marketing separada, que aquel texto no contemplaba. Quedan 15 datos marcados `[PENDIENTE]` visibles en pantalla |
 | 8 | Prueba de carga: 10.000 altas sintéticas — latencia, drenaje de la cola, tiempos del panel, peso real en red móvil | Bloques 4, 5 y 6 | ☐ |
 
 El bloque 8 no es opcional. Los tres cuellos de botella del sistema solo se manifiestan con volumen.
@@ -145,7 +145,7 @@ Estas decisiones no están tomadas y **no se pueden inferir del código**. Si un
 
 | # | Decisión abierta | Qué bloquea |
 |---|---|---|
-| 01 | Duración de la activación en días | Plan de Resend, volumen total |
+| 01 | ~~Duración de la activación en días~~ **RESPONDIDA:** del viernes 21 de agosto de 2026 a las 05:00 al domingo 23 de agosto a las 23:00, hora de Santiago. Cargada en `CONCURSO_INICIO` / `CONCURSO_CIERRE` | Plan de Resend, volumen total |
 | 02 | ¿Un sorteo final o sorteos diarios? | Modelo completo del admin |
 | 03 | Cuántos ganadores, cuántos suplentes, qué se gana | Parámetros del sorteo, copy del correo de ganador |
 | 04 | ¿Hay canje presencial del perfume? | Módulo entero de código único + QR + validación |
@@ -153,7 +153,7 @@ Estas decisiones no están tomadas y **no se pueden inferir del código**. Si un
 | 06 | Dominio y control del DNS | SPF/DKIM/DMARC, todas las pruebas de correo |
 | 07 | ¿Los datos van a un CRM de Betano? | Redacción del consentimiento de marketing |
 | 08 | ¿Los paneles muestran algo en vivo? | Presupuesto de Realtime |
-| 09 | Quién es el responsable del tratamiento | Bases, acuerdo de tratamiento, contacto ARCO+ |
+| 09 | ~~Quién es el responsable del tratamiento~~ **RESPONDIDA:** AGENCIA VS SPA, RUT 77.043.073-9, Diagonal Oriente 1850, Providencia; encargado del tratamiento Antonio Capra Barbera, RUT 18.467.272-3. Sigue faltando la casilla de contacto ARCO+ | Bases, acuerdo de tratamiento, contacto ARCO+ |
 | 10 | Assets faltantes | Haffer Medium/Bold, logo SVG, lockup vectorial, spot web, licencia de las tipografías para el dominio nuevo |
 
 Nunca inventes: fechas de sorteo, cifras de premio, nombres de mall, slugs de panel, texto de bases, ni copy que prometa algo verificable.
