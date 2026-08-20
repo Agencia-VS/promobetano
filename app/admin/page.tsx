@@ -228,6 +228,10 @@ export default async function AdminPage() {
             recibiendoAltas={estadoRes.pruebas}
             identidades={identidades}
             filasDePrueba={resumen?.pruebas ?? 0}
+            /* Sale de `sorteos`, que ya está cargado: no hace falta una
+               consulta más. Es lo que destraba el botón de limpieza cuando las
+               inscripciones ya no están pero la jornada de ensayo sí. */
+            sorteosDePrueba={sorteos.filter((s) => s.es_prueba).length}
           />
 
           <div className="tarjeta">

@@ -34,6 +34,7 @@ export function ModoPruebas({
   recibiendoAltas,
   identidades,
   filasDePrueba,
+  sorteosDePrueba,
 }: {
   /** El interruptor de ensayo, tal como está en la base. */
   activo: boolean;
@@ -47,6 +48,18 @@ export function ModoPruebas({
   identidades: IdentidadPrueba[];
   /** Cuántas inscripciones de prueba hay ahora mismo. Es lo que se va a borrar. */
   filasDePrueba: number;
+  /**
+   * Cuántas jornadas de ensayo quedan en `sorteos`.
+   *
+   * Va aparte de `filasDePrueba` porque las dos cosas se borran juntas pero
+   * desaparecen por separado, y contar solo las inscripciones producía un
+   * bloqueo sin salida: si alguien borra las filas a mano desde Supabase, el
+   * contador queda en cero y este botón se deshabilita, pero la jornada de
+   * ensayo sigue ahí en estado 'ejecutado' y `abrir_pruebas` se niega a abrir
+   * mientras exista. Sin esta cifra no quedaba ninguna acción posible en el
+   * panel: ni limpiar ni volver a abrir.
+   */
+  sorteosDePrueba: number;
 }) {
   const router = useRouter();
   const [pendiente, iniciarTransicion] = useTransition();
@@ -54,6 +67,10 @@ export function ModoPruebas({
   const [error, setError] = useState<string | null>(null);
 
   const ocupado = enviando || pendiente;
+
+  /* Hay algo que limpiar si queda CUALQUIERA de las dos cosas. La jornada de
+     ensayo sola también cuenta: es la que impide abrir el siguiente. */
+  const hayQuePurgar = filasDePrueba > 0 || sorteosDePrueba > 0;
 
   async function pide(url: string): Promise<Record<string, unknown>> {
     const r = await fetch(url, { method: "POST", headers: { "content-type": "application/json" } });
@@ -102,7 +119,7 @@ export function ModoPruebas({
        */
       if (
         !window.confirm(
-          `Borrar ${filasDePrueba} inscripción(es) de prueba y la jornada de ensayo?\n\nNo se puede deshacer. No toca ninguna inscripción real: solo las marcadas como prueba, y nunca las que quedaron dentro de un sorteo ya ejecutado.`,
+          `Borrar ${filasDePrueba} inscripción(es) de prueba y ${sorteosDePrueba} jornada(s) de ensayo?\n\nNo se puede deshacer. No toca ninguna inscripción real: solo las marcadas como prueba, y nunca las que quedaron dentro de un sorteo ya ejecutado.`,
         )
       ) {
         return;
@@ -181,7 +198,9 @@ export function ModoPruebas({
 
       <p className="estado__fuente" style={{ marginTop: 8 }}>
         Datos de prueba en la base ahora:{" "}
-        <strong>{filasDePrueba.toLocaleString("es-CL")}</strong>
+        <strong>{filasDePrueba.toLocaleString("es-CL")}</strong> inscripción(es)
+        y <strong>{sorteosDePrueba}</strong> jornada(s) de ensayo. Mientras quede
+        una jornada, no se puede abrir la siguiente.
       </p>
 
       <div className="acciones">
@@ -205,7 +224,7 @@ export function ModoPruebas({
           type="button"
           className="btn btn--peligro"
           onClick={purgar}
-          disabled={ocupado || filasDePrueba === 0}
+          disabled={ocupado || !hayQuePurgar}
         >
           Borrar datos de prueba
         </button>
