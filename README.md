@@ -115,11 +115,9 @@ ya instalado).
    las variables (ver `.env.example`).
 2. **Dominio del remitente.** SPF, DKIM y DMARC verificados en Resend antes del
    primer envío; sin eso los correos entran a spam.
-3. **Contacto de datos personales.** `NEXT_PUBLIC_CORREO_DATOS` sigue con el
-   dominio reservado por la RFC 2606. Es un bloqueante legal.
-4. **Revisión legal.** `/bases` ya describe la ruleta, los topes, el folio y la
+3. **Revisión legal.** `/bases` ya describe la ruleta, los topes, el folio y la
    entrega presencial, pero necesita visto bueno del abogado antes de publicar.
-5. **Dominio.** `NEXT_PUBLIC_SITE_URL=https://promobetano.cl` en Vercel. Sin
+4. **Dominio.** `NEXT_PUBLIC_SITE_URL=https://promobetano.cl` en Vercel. Sin
    esa variable las plantillas omiten el lockup y los correos salen sin marca
    (ver `lib/sitio.ts`). El QR está impreso contra la raíz del dominio, que
    redirige a `/i` preservando el query string.
@@ -128,16 +126,16 @@ ya instalado).
    punto, así que toda inscripción queda en `directo` y eso es correcto. La
    cañería sigue en pie para el día que haya más de un punto; la sede que muestra
    la portada es fija (`SEDE` en `lib/campana.ts`).
-6. **Proveedor de correo.** Solo salen respaldos para ganadores —máximo 30 por
+5. **Proveedor de correo.** Solo salen respaldos para ganadores —máximo 30 por
    jornada—, pero SPF, DKIM, DMARC y el webhook de rebotes siguen siendo
    necesarios.
    Confirmar el plan y crear el webhook en el panel de Resend apuntando a
    `/api/webhooks/resend` con los eventos `email.delivered`, `email.bounced` y
    `email.complained`, más `RESEND_WEBHOOK_SECRET` en Vercel: sin esa variable la
    ruta responde 503 y los rebotes no se registran.
-7. **Usuario del panel.** Créalo en Supabase → Authentication → Users. No hay
+6. **Usuario del panel.** Créalo en Supabase → Authentication → Users. No hay
    registro público: es la única forma de entrar a `/admin`.
-8. **Prueba de concurrencia** con el máximo operativo esperado de 500 altas por
+7. **Prueba de concurrencia** con el máximo operativo esperado de 500 altas por
    jornada.
 
 Opcional y no bloqueante: Cloudflare Turnstile. Los índices únicos sobre RUT y

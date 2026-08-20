@@ -6,7 +6,6 @@ import { BetanoLogo } from "./Lockup";
 import { FormularioInscripcion } from "./FormularioInscripcion";
 import { ResultadoRuleta } from "./ResultadoRuleta";
 import { AvisoPruebas } from "./AvisoPruebas";
-import { CORREO_DATOS } from "@/lib/contacto";
 import type { Confirmado } from "@/lib/confirmado";
 
 /**
@@ -74,8 +73,7 @@ export function ContenidoModalInscripcion({
       />
 
       <p style={{ ...estiloTexto, fontSize: 11.5 }}>
-        Juega con responsabilidad. Consultas de datos personales:{" "}
-        <a href={`mailto:${CORREO_DATOS}`}>{CORREO_DATOS}</a>
+        Solo mayores de 18 años. Juega con responsabilidad.
       </p>
     </>
   );

@@ -16,7 +16,6 @@ import {
   type IdentidadPrueba,
 } from "@/components/admin/ModoPruebas";
 import { PruebaCorreo } from "@/components/admin/PruebaCorreo";
-import { CORREO_DATOS_SIN_CONFIGURAR } from "@/lib/contacto";
 
 export const dynamic = "force-dynamic";
 
@@ -147,15 +146,6 @@ export default async function AdminPage() {
       <Barra correo={usuario.email ?? ""} />
 
       <main className="adm__cuerpo">
-        {CORREO_DATOS_SIN_CONFIGURAR && (
-          <p className="aviso aviso--error">
-            <strong>Bloqueante legal:</strong> el contacto de datos personales
-            sigue siendo <code>datos@example.com</code>. Las solicitudes sobre
-            datos personales necesitan un canal real y atendido. Cárgalo en{" "}
-            <code>NEXT_PUBLIC_CORREO_DATOS</code>.
-          </p>
-        )}
-
         {problemas.length > 0 && jornadas.length === 0 && (
           <div className="aviso aviso--error">
             <strong>Calendario de sorteos:</strong> revisa las variables

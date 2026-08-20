@@ -169,13 +169,15 @@ test("la confirmación dice que nos comunicaremos solo si gana", () => {
   assert.match(html, /Abre la botella/);
 });
 
-test("todo correo lleva el aviso 18+ y el contacto de datos", () => {
-  // Obligatorio en toda pieza de una marca de apuestas (reglas 17 y legal).
+test("todo correo lleva el aviso 18+ y no publica un correo de soporte", () => {
+  // El soporte de Betano no aplica: la activación y el retiro son presenciales.
   for (const tipo of TIPOS) {
     const { html, texto } = plantilla(tipo, "Ana");
     assert.match(html, /mayores de 18 años/i, `${tipo}: falta el 18+ en html`);
     assert.match(html, /Juega con responsabilidad/i, `${tipo}: falta el aviso`);
     assert.match(texto, /mayores de 18 años/i, `${tipo}: falta el 18+ en texto`);
+    assert.doesNotMatch(html, /mailto:|consultas sobre tus datos/i);
+    assert.doesNotMatch(texto, /consultas sobre tus datos|@betano/i);
   }
 });
 

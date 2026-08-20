@@ -9,13 +9,26 @@ export const labelStyle: React.CSSProperties = {
 };
 
 export const errorStyle: React.CSSProperties = {
-  fontSize: 12.5,
-  fontWeight: 500,
+  display: "flex",
+  alignItems: "flex-start",
+  gap: 9,
+  padding: "10px 12px",
+  background: "var(--color-bone)",
+  border: "2px solid var(--color-rust-deep)",
+  borderRadius: 4,
+  boxShadow: "0 4px 0 rgba(60,0,0,.2)",
+  fontSize: 14,
+  lineHeight: 1.35,
+  fontWeight: 800,
   color: "var(--color-rust-deep)",
 };
 
 export function bordeCampo(invalido: boolean): string {
-  return `1px solid ${invalido ? "var(--color-rust-deep)" : "rgba(10,6,5,.22)"}`;
+  return `${invalido ? 2 : 1}px solid ${invalido ? "var(--color-rust-deep)" : "rgba(10,6,5,.22)"}`;
+}
+
+export function sombraCampo(invalido: boolean): string {
+  return invalido ? "0 0 0 3px rgba(249,241,233,.85)" : "none";
 }
 
 export const inputStyle = (invalido: boolean): React.CSSProperties => ({
@@ -29,8 +42,47 @@ export const inputStyle = (invalido: boolean): React.CSSProperties => ({
   background: "var(--color-bone)",
   borderRadius: 4,
   border: bordeCampo(invalido),
+  boxShadow: sombraCampo(invalido),
   outline: "none",
 });
+
+/**
+ * El error necesita una superficie propia: sobre el naranja de la campaña el
+ * texto burdeos suelto tenía contraste insuficiente, sobre todo bajo el sol y
+ * en pantallas móviles. El icono no reemplaza el texto y queda oculto para
+ * lectores de pantalla, que reciben el mensaje mediante role="alert".
+ */
+export function MensajeError({
+  id,
+  children,
+}: {
+  id: string;
+  children: ReactNode;
+}) {
+  return (
+    <span id={id} role="alert" style={errorStyle}>
+      <span
+        aria-hidden="true"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 20,
+          height: 20,
+          flex: "0 0 20px",
+          borderRadius: "50%",
+          background: "var(--color-rust-deep)",
+          color: "var(--color-bone)",
+          fontSize: 13,
+          lineHeight: 1,
+        }}
+      >
+        !
+      </span>
+      <span>{children}</span>
+    </span>
+  );
+}
 
 /** Props que Campo inyecta en el control: el llamador no puede omitirlas. */
 export type ControlProps = {
@@ -72,11 +124,7 @@ export function Campo({
         {label}
       </label>
       {children(control)}
-      {error && (
-        <span id={errorId} role="alert" style={errorStyle}>
-          {error}
-        </span>
-      )}
+      {error && <MensajeError id={errorId}>{error}</MensajeError>}
     </div>
   );
 }
@@ -110,6 +158,7 @@ export function Casilla({
         checked={checked}
         onChange={(ev) => onChange(ev.target.checked)}
         aria-describedby={describedBy}
+        aria-invalid={describedBy ? true : undefined}
         style={{
           width: 22,
           height: 22,
