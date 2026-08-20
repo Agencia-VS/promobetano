@@ -84,7 +84,11 @@ console.log("\n=== 2. Puerta se cierra y persiste server-side ===");
   check(!!edad && edad.httpOnly === true, `cookie edc_18_ok es httpOnly (${edad ? "httpOnly=" + edad.httpOnly : "ausente"})`);
   const org = cookies.find((c) => c.name === "edc_origen");
   check(org?.value === "parque-arauco-01", `origen registrado desde ?p= (${org?.value})`);
-  check((await p.locator("text=Parque Arauco").count()) > 0, "muestra el nombre del panel de la lista blanca");
+  // El ?p= se guarda para MEDIR, no para mostrarse: la placa nombra la sede de
+  // la activacion, que es la misma con o sin QR. Antes salia de una lista blanca
+  // y el trafico sin ?p= —la mayoria— leia "Panel por definir".
+  check((await p.locator("text=Costanera Center").count()) > 0, "la placa nombra la sede, no el slug del panel");
+  check((await p.locator("text=Parque Arauco").count()) === 0, "el ?p= no elige el texto de la portada");
   await ctx.close();
 }
 
@@ -262,7 +266,73 @@ console.log("\n=== 8. Atribucion de panel ===");
   // slug arbitrario no se refleja en la pagina
   await p.goto(B + "/i?p=retira-tu-premio-ahora-01", { waitUntil: "networkidle" });
   check((await p.locator("text=Retira Tu Premio").count()) === 0, "un slug arbitrario no se refleja como texto en la pagina");
-  check((await p.locator("text=Panel por definir").count()) > 0, "slug desconocido muestra 'Panel por definir'");
+  await ctx.close();
+}
+
+{
+  // Regresion del smoke test del 19 ago: TODA inscripcion quedaba con origen
+  // "directo". El POST del formulario no pasaba por proxy.ts, asi que el header
+  // con el origen no existia y el handler caia al default. Lo que se comprueba
+  // es que la peticion de alta LLEVA la atribucion: la cookie es lo que el
+  // servidor puede leer con o sin matcher, y es el respaldo del arreglo.
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  let cookieDelAlta = null;
+  await ctx.route("**/api/inscripcion", (route) => {
+    cookieDelAlta = route.request().headers()["cookie"] ?? "";
+    return route.fulfill({
+      status: 201,
+      contentType: "application/json",
+      body: JSON.stringify({ ok: true, sorteo: "viernes 21 de agosto" }),
+    });
+  });
+  const p = await ctx.newPage();
+  await p.goto(B + "/edad", { waitUntil: "domcontentloaded" });
+  await p.getByRole("button", { name: /tengo 18/i }).click();
+  await p.waitForLoadState("networkidle");
+  await p.goto(B + "/i?p=costanera-center-04", { waitUntil: "networkidle" });
+  await p.goto(B + "/inscripcion", { waitUntil: "networkidle" });
+  await p.fill("#f-nombre", "Ana Perez");
+  await p.fill("#f-email", "ana@correo.cl");
+  await p.fill("#f-rut", "12.345.678-5");
+  await p.fill("#f-tel", "87654321");
+  await p.locator('input[type=checkbox]').nth(0).check();
+  await p.locator('input[type=checkbox]').nth(1).check();
+  await p.click('button[type=submit]');
+  await p.waitForTimeout(600);
+  check(/edc_origen=costanera-center-04/.test(cookieDelAlta ?? ""),
+    `el POST de alta lleva la atribucion de panel (${cookieDelAlta ?? "sin peticion"})`);
+  await ctx.close();
+}
+
+console.log("\n=== 8b. Portada y confirmacion: sede y premio ===");
+{
+  const { ctx, p } = await nueva({
+    status: 201,
+    body: { ok: true, sorteo: "viernes 21 de agosto" },
+  });
+  await p.goto(B + "/edad", { waitUntil: "domcontentloaded" });
+  await p.getByRole("button", { name: /tengo 18/i }).click();
+  await p.waitForLoadState("networkidle");
+  await p.goto(B + "/i", { waitUntil: "networkidle" });
+  // La sede es fija: aparece tambien sin ?p=, que antes decia "Panel por definir".
+  check((await p.locator("text=Costanera Center").count()) > 0, "la portada nombra la sede sin depender del ?p=");
+  check((await p.locator("text=Panel por definir").count()) === 0, "ya no queda el placeholder de panel");
+
+  await p.goto(B + "/inscripcion", { waitUntil: "networkidle" });
+  await p.fill("#f-nombre", "Ana Perez");
+  await p.fill("#f-email", "ana@correo.cl");
+  await p.fill("#f-rut", "12.345.678-5");
+  await p.fill("#f-tel", "87654321");
+  await p.locator('input[type=checkbox]').nth(0).check();
+  await p.locator('input[type=checkbox]').nth(1).check();
+  await p.click('button[type=submit]');
+  await p.waitForURL("**/listo", { timeout: 5000 });
+  check((await p.locator("text=Perfume Eau de Confianza").count()) > 0, "/listo nombra el premio");
+  check((await p.locator("text=viernes 21 de agosto").count()) > 0, "/listo muestra el dia del sorteo");
+  check((await p.locator("text=Por definir").count()) === 0, "no queda ningun 'Por definir' en /listo");
+  // Ninguna hora en las placas: era el "a las 05:00" del correo del smoke test.
+  const placas = await p.locator("text=/SORTEO|Sorteo/").first().textContent().catch(() => "");
+  check(!/\d{2}:\d{2}/.test(placas ?? ""), `la placa del sorteo no lleva hora (${(placas ?? "").trim().slice(0, 40)})`);
   await ctx.close();
 }
 

@@ -1,9 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { supabasePublico } from "@/lib/supabase/publico";
-import { etiquetaJornada, jornadaDe } from "@/lib/concurso";
+import { diaSorteo, jornadaDe } from "@/lib/concurso";
 import { estadoVigente } from "@/lib/concurso-servidor";
 import { normalizaTelefono, valida } from "@/lib/inscripcion";
-import { HEADER_ORIGEN, ORIGEN_DIRECTO, slugValido } from "@/lib/origen";
+import {
+  COOKIE_ORIGEN,
+  HEADER_ORIGEN,
+  ORIGEN_DIRECTO,
+  slugValido,
+} from "@/lib/origen";
 
 export const runtime = "nodejs";
 // La ventana del concurso se evalúa contra el reloj de cada petición: esta
@@ -64,13 +69,18 @@ export async function POST(request: NextRequest) {
   }
 
   /*
-   * El origen sale del header que pone proxy.ts, no del cuerpo. Si viniera del
-   * cliente, cualquiera podría acreditarle sus inscripciones al panel que
-   * quisiera y el reporte por ubicación dejaría de significar nada.
+   * El origen sale del header que pone proxy.ts o de la cookie que ese mismo
+   * proxy escribió, NUNCA del cuerpo. Si viniera del cliente, cualquiera podría
+   * acreditarle sus inscripciones al panel que quisiera y el reporte por
+   * ubicación dejaría de significar nada.
+   *
+   * Las dos fuentes y no solo el header: el header vale mientras esta ruta esté
+   * en el matcher de proxy.ts, y esa lista hay que acordarse de mantenerla.
+   * Estar fuera de ella es exactamente el defecto que tuvo esta ruta —toda
+   * inscripción quedaba en "directo" aunque se llegara por /i?p=…— y la cookie,
+   * que es httpOnly y viaja igual en el POST, lo hace irrelevante.
    */
-  const cabecera = request.headers.get(HEADER_ORIGEN);
-  const origen =
-    cabecera && slugValido(cabecera) ? cabecera : ORIGEN_DIRECTO;
+  const origen = origenDe(request);
 
   const { data, error } = await supabase.rpc("crear_inscripcion", {
     p_nombre: valores.nombre,
@@ -105,7 +115,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           ok: true,
-          sorteo: jornada ? etiquetaJornada(jornada) : null,
+          sorteo: jornada ? diaSorteo(jornada.sorteoAt) : null,
           /*
            * Si el alta fue un ensayo. Viaja en la respuesta y no lo consulta la
            * pantalla de confirmación por su cuenta: para cuando esa pantalla se
@@ -151,4 +161,15 @@ export async function POST(request: NextRequest) {
 
 function texto(v: unknown): string {
   return typeof v === "string" ? v : "";
+}
+
+/** Header primero, cookie después: el header lleva el ?p= de la petición que
+    trajo a la persona, y la cookie lo que se resolvió en una visita anterior. */
+function origenDe(request: NextRequest): string {
+  const cabecera = request.headers.get(HEADER_ORIGEN);
+  if (cabecera && slugValido(cabecera) && cabecera !== ORIGEN_DIRECTO) {
+    return cabecera;
+  }
+  const galleta = request.cookies.get(COOKIE_ORIGEN)?.value;
+  return galleta && slugValido(galleta) ? galleta : ORIGEN_DIRECTO;
 }

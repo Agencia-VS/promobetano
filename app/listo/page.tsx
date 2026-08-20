@@ -10,6 +10,7 @@ import { PasosPerfume, SelloConfirmado } from "@/components/Confirmacion";
 import { AvisoPruebas } from "@/components/AvisoPruebas";
 import { leeConfirmadoAhora, useConfirmado } from "@/lib/confirmado";
 import { CORREO_DATOS } from "@/lib/contacto";
+import { PREMIO } from "@/lib/campana";
 
 export default function ListoPage() {
   const router = useRouter();
@@ -75,10 +76,10 @@ export default function ListoPage() {
             }}
           >
             {/*
-              A qué sorteo entró, tal como lo devolvió el alta. Hay un sorteo por
-              día a las 21:00, así que quien envía el formulario a las 21:30 entra
-              al del día siguiente: sin esta placa se queda esperando un resultado
-              que no le corresponde.
+              A qué sorteo entró, tal como lo devolvió el alta: el día, sin hora.
+              Hay un sorteo por día, así que quien envía el formulario después de
+              las 21:00 entra al del día siguiente y sin esta placa se queda
+              esperando un resultado que no le corresponde.
 
               El respaldo "Fecha por definir" cubre el payload de una versión
               anterior guardado en sessionStorage, no un dato que falte.
@@ -88,8 +89,7 @@ export default function ListoPage() {
               value={confirmado?.sorteo ?? "Fecha por definir"}
               pending={!confirmado?.sorteo}
             />
-            {/* TODO(decisión 03): el premio sigue sin definirse. */}
-            <InfoBadge label="Premio" value="Por definir" pending />
+            <InfoBadge label="Premio" value={PREMIO} />
           </div>
 
           <p

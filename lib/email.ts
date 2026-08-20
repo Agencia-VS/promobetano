@@ -1,6 +1,6 @@
 import { MARCA } from "./marca.ts";
 import { CORREO_DATOS } from "./contacto.ts";
-import { fechaSorteo } from "./concurso.ts";
+import { diaSorteo } from "./concurso.ts";
 import { urlAbsoluta } from "./sitio.ts";
 
 /**
@@ -242,9 +242,11 @@ export function plantilla(
   const quienTexto = primerNombre(nombre);
 
   if (tipo === "confirmacion") {
-    // El correo se abre horas después y puede que otro día, así que la fecha va
-    // absoluta: un "hoy a las 21:00" en un correo no significa nada.
-    const cuando = sorteoAt ? `Entras al sorteo del ${fechaSorteo(sorteoAt)}. ` : "";
+    // El correo se abre horas después y puede que otro día, así que el día va
+    // absoluto: un "hoy" en un correo no significa nada. Y va el día sin hora,
+    // porque quien se inscribe el día X entra al sorteo del día X y eso es todo
+    // lo que necesita saber.
+    const cuando = sorteoAt ? `Entras al sorteo del ${diaSorteo(sorteoAt)}. ` : "";
     return {
       asunto: "Recibimos tu inscripción — Eau de Confianza",
       html: pieza(

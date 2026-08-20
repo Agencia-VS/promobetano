@@ -346,6 +346,21 @@
   color: var(--color-confianza);
 }
 
+/* Estado del correo de ganador. «Sin encolar» va tenue y no en rojo: no es un
+   fallo, es que falta apretar el botón. */
+.pastilla--correo-ok {
+  color: #35c46a;
+}
+.pastilla--correo-cola {
+  color: #7db8ff;
+}
+.pastilla--correo-error {
+  color: var(--color-confianza);
+}
+.pastilla--correo-sin {
+  color: rgba(249, 241, 233, 0.45);
+}
+
 /* ── Avisos ───────────────────────────────────────────────────────────────── */
 
 .aviso {

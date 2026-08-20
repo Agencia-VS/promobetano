@@ -156,5 +156,20 @@ export const config = {
   // /api/admin entra aunque cada handler verifique la sesión por su cuenta: el
   // matcher es la primera barrera y la verificación del handler la segunda,
   // porque ninguna de las dos debería ser el único punto de fallo.
-  matcher: ["/", "/i", "/inscripcion", "/listo", "/admin/:path*", "/api/admin/:path*"],
+  //
+  // /api/inscripcion entra para que el POST del formulario reciba el header con
+  // el origen. Estar fuera era el motivo de que TODA inscripción quedara en
+  // "directo": el header se inyecta en la petición interceptada y no viaja en un
+  // fetch posterior del navegador. No lleva puerta 18+ —RUTAS_CON_PUERTA compara
+  // con /inscripcion, y /api/inscripcion no empieza por ahí—, así que el POST no
+  // se redirige a /edad.
+  matcher: [
+    "/",
+    "/i",
+    "/inscripcion",
+    "/listo",
+    "/api/inscripcion",
+    "/admin/:path*",
+    "/api/admin/:path*",
+  ],
 };

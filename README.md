@@ -121,10 +121,21 @@ ya instalado).
    marcadas «Redacción por revisar»** —la unicidad por jornada y los tres sorteos
    diarios— que describen lo que hace el código y necesitan visto bueno del
    abogado antes de publicar.
-5. **Lista de paneles.** Completar `PANELES` en `lib/origen.ts` antes de generar
-   e imprimir los QR.
-6. **Webhook de rebotes.** La función `registrar_evento_email` ya existe en la
-   base; falta la ruta que reciba y verifique la firma de Resend.
+5. **Dominio.** `NEXT_PUBLIC_SITE_URL=https://promobetano.cl` en Vercel. Sin
+   esa variable las plantillas omiten el lockup y los correos salen sin marca
+   (ver `lib/sitio.ts`). El QR está impreso contra la raíz del dominio, que
+   redirige a `/i` preservando el query string.
+
+   La atribución por `?p=` no aplica a esta activación: se concentra en un solo
+   punto, así que toda inscripción queda en `directo` y eso es correcto. La
+   cañería sigue en pie para el día que haya más de un punto; la sede que muestra
+   la portada es fija (`SEDE` en `lib/campana.ts`).
+6. **Volumen del proveedor de correo.** Con 9.000 confirmaciones en un día, el
+   límite que puede frenar la activación es el del plan de Resend, no Supabase.
+   Confirmar el plan y crear el webhook en el panel de Resend apuntando a
+   `/api/webhooks/resend` con los eventos `email.delivered`, `email.bounced` y
+   `email.complained`, más `RESEND_WEBHOOK_SECRET` en Vercel: sin esa variable la
+   ruta responde 503 y los rebotes no se registran.
 7. **Usuario del panel.** Créalo en Supabase → Authentication → Users. No hay
    registro público: es la única forma de entrar a `/admin`.
 8. **Prueba de carga** con 10.000 altas.

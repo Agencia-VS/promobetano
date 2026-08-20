@@ -1,10 +1,9 @@
 import Link from "next/link";
-import { headers } from "next/headers";
 import { Screen } from "@/components/Screen";
 import { Lockup } from "@/components/Lockup";
 import { Footer18 } from "@/components/Footer18";
 import { InfoBadge } from "@/components/InfoBadge";
-import { HEADER_ORIGEN, ORIGEN_DIRECTO, etiquetaPanel } from "@/lib/origen";
+import { SEDE } from "@/lib/campana";
 import { cierre, fechaCorta } from "@/lib/concurso";
 import { estadoVigente } from "@/lib/concurso-servidor";
 
@@ -12,8 +11,6 @@ import { estadoVigente } from "@/lib/concurso-servidor";
 export const dynamic = "force-dynamic";
 
 export default async function PortadaPage() {
-  const h = await headers();
-  const origen = h.get(HEADER_ORIGEN) ?? ORIGEN_DIRECTO;
   // La placa refleja el estado vigente, interruptor manual incluido: si el
   // equipo cierra a mano, la portada no puede seguir invitando a inscribirse.
   const { estado } = await estadoVigente();
@@ -93,8 +90,13 @@ export default async function PortadaPage() {
               value={ventana ?? "Fechas por definir"}
               pending={ventana === null}
             />
-            {/* TODO(§Qué falta 05): lista de paneles en lib/origen.ts. */}
-            <InfoBadge label="Estás en" value={etiquetaPanel(origen)} pending />
+            {/* La sede es fija: toda la activación está en un mismo mall, así
+                que es verdad también para quien llegó por un link compartido y
+                no por el QR de un panel. El ?p= sigue resolviéndose en proxy.ts
+                para la atribución; lo que no hace es decidir este texto, que
+                antes quedaba en "Panel por definir" en la mayoría de las
+                visitas. */}
+            <InfoBadge label="Estás en" value={SEDE} />
           </div>
 
           <Link

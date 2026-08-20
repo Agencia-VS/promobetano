@@ -44,7 +44,33 @@ type Resultado = {
   motivo: string | null;
   promovido_desde: number | null;
   cambiado_at: string | null;
+  /* Estado del correo DE GANADOR de esta fila. null = nunca se encoló, que es
+     el caso del suplente recién promovido: le falta un batch de correos. No se
+     mira `email_estado`, que es de la inscripción y lo comparte con la
+     confirmación. */
+  correo_estado: string | null;
+  correo_intentos: number | null;
+  correo_error: string | null;
 };
+
+/*
+ * Cómo se lee el estado de la cola en la tabla. «Sin encolar» es la etiqueta
+ * que faltaba: el encolado del correo de ganador es manual, así que después de
+ * promover a un suplente hay que volver a apretar el botón, y antes no había
+ * forma de ver a quién le faltaba.
+ */
+function correoDe(r: Resultado): { etiqueta: string; clase: string } {
+  switch (r.correo_estado) {
+    case null:
+      return { etiqueta: "sin encolar", clase: "correo-sin" };
+    case "enviado":
+      return { etiqueta: "enviado", clase: "correo-ok" };
+    case "error":
+      return { etiqueta: "error", clase: "correo-error" };
+    default:
+      return { etiqueta: "en cola", clase: "correo-cola" };
+  }
+}
 
 /*
  * Las ventanas se muestran SIEMPRE en hora de Chile, aunque el navegador del
@@ -439,6 +465,7 @@ export function PanelSorteos({ sorteos }: { sorteos: Sorteo[] }) {
                 <th>Correo</th>
                 <th>Teléfono</th>
                 <th>RUT</th>
+                <th>Correo premio</th>
                 <th>Motivo</th>
                 <th />
               </tr>
@@ -466,6 +493,28 @@ export function PanelSorteos({ sorteos }: { sorteos: Sorteo[] }) {
                   </td>
                   <td>+56 9 {r.telefono}</td>
                   <td>{r.documento}</td>
+                  <td>
+                    {(() => {
+                      const c = correoDe(r);
+                      return (
+                        <span
+                          className={`pastilla pastilla--${c.clase}`}
+                          /* El motivo del último fallo y la cuenta de intentos
+                             van en el title y no en la celda: son para cuando
+                             algo se ve mal, no para leerlos en las cuarenta
+                             filas de un sorteo que salió bien. */
+                          title={
+                            r.correo_error ??
+                            (r.correo_intentos
+                              ? `${r.correo_intentos} intento(s)`
+                              : undefined)
+                          }
+                        >
+                          {c.etiqueta}
+                        </span>
+                      );
+                    })()}
+                  </td>
                   <td>{r.motivo ?? "—"}</td>
                   <td style={{ textAlign: "right" }}>
                     {r.rol === "ganador" ? (

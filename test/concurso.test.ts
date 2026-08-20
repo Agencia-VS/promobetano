@@ -1,8 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  diaSorteo,
   estadoConcurso,
-  etiquetaJornada,
   etiquetaVentana,
   fechaCorta,
   fechaSorteo,
@@ -239,23 +239,40 @@ test("quien se inscribe el viernes de noche entra al sorteo del sábado", () => 
   const j = jornadaDe(ahora);
 
   assert.equal(j?.dia, "2026-08-22");
-  // Y se lo decimos así: llamarlo "hoy" sería mentirle, porque el sorteo de hoy
-  // ya se hizo hora y media antes.
-  assert.equal(etiquetaJornada(j!, ahora), "mañana a las 21:00");
+  // Y se lo decimos con el día, no con un "hoy": el sorteo de hoy ya se hizo
+  // hora y media antes, así que "hoy" sería mentirle.
+  assert.equal(diaSorteo(j!.sorteoAt), "sábado 22 de agosto");
   fin();
 });
 
-test("dentro de su propio día la etiqueta dice hoy", () => {
+test("lo que ve la persona es el día del sorteo, sin hora", () => {
   const fin = conCalendario(CALENDARIO_REAL);
-  const ahora = new Date("2026-08-22T13:00:00-04:00");
-  assert.equal(etiquetaJornada(jornadaDe(ahora)!, ahora), "hoy a las 21:00");
+  const dia = diaSorteo(new Date("2026-08-21T21:00:00-04:00"));
+
+  assert.equal(dia, "viernes 21 de agosto");
+  // La regresión que esto impide: el correo decía "a las 05:00" —la APERTURA de
+  // la ventana, no un sorteo— porque el instante que llega es el cierre de la
+  // jornada y en la ventana de ensayo ese cierre se recorta al inicio de la
+  // primera jornada real. Sin hora, el día sale correcto en los dos casos.
+  assert.doesNotMatch(dia, /a las|\d{2}:\d{2}/);
   fin();
 });
 
-test("para el correo la fecha del sorteo es absoluta, nunca «hoy»", () => {
+test("el mismo instante en la ventana de ensayo da el día correcto", () => {
   const fin = conCalendario(CALENDARIO_REAL);
-  // El correo se abre horas después, y puede que otro día: "hoy a las 21:00" en
-  // un correo no significa nada.
+  // ventana_hasta de la jornada de prueba: las 05:00 del viernes, que es la
+  // apertura de la primera jornada real. El día que se anuncia es el mismo.
+  assert.equal(
+    diaSorteo(new Date("2026-08-21T05:00:00-04:00")),
+    "viernes 21 de agosto",
+  );
+  fin();
+});
+
+test("en las bases la fecha del sorteo sí lleva la hora", () => {
+  const fin = conCalendario(CALENDARIO_REAL);
+  // Único consumidor: la enumeración de sorteos de /bases. En un texto legal el
+  // instante es parte de lo que se declara, así que ahí la hora no se quita.
   assert.equal(
     fechaSorteo(new Date("2026-08-21T21:00:00-04:00")),
     "viernes 21 de agosto a las 21:00",

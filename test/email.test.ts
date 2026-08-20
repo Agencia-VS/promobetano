@@ -217,9 +217,15 @@ test("la confirmación dice a qué sorteo entró la persona", () => {
     plantilla("confirmacion", "Ana", SORTEO_VIERNES),
   );
 
-  // Absoluta y no "hoy": el correo se abre horas después, puede que otro día.
-  assert.match(html, /Entras al sorteo del viernes 21 de agosto a las 21:00/);
-  assert.match(texto, /Entras al sorteo del viernes 21 de agosto a las 21:00/);
+  // El día, absoluto y sin hora. Absoluto porque el correo se abre horas
+  // después, puede que otro día, y un "hoy" ahí no significa nada. Sin hora
+  // porque el instante que llega es el cierre de la jornada, y en la ventana de
+  // ensayo ese cierre se recorta a las 05:00 de la apertura real: el correo
+  // anunciaba "sorteo a las 05:00", que es una apertura y no un sorteo.
+  assert.match(html, /Entras al sorteo del viernes 21 de agosto\./);
+  assert.match(texto, /Entras al sorteo del viernes 21 de agosto\./);
+  assert.doesNotMatch(html, /sorteo del [^.]*a las/);
+  assert.doesNotMatch(texto, /sorteo del [^.]*a las/);
   // Y sigue estando la frase que el equipo dejó escrita.
   assert.match(html, /Si ganas, nos comunicaremos contigo/);
   // El asunto no cambia: la fecha va en el cuerpo, no en la bandeja.

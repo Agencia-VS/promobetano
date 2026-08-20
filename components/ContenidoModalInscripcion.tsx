@@ -9,6 +9,7 @@ import { PasosPerfume, SelloConfirmado } from "./Confirmacion";
 import { InfoBadge } from "./InfoBadge";
 import { AvisoPruebas } from "./AvisoPruebas";
 import { CORREO_DATOS } from "@/lib/contacto";
+import { PREMIO } from "@/lib/campana";
 
 /**
  * Contenido del modal: formulario y, tras el alta, la confirmación EN SU SITIO.
@@ -57,8 +58,7 @@ export function ContenidoModalInscripcion({
             value={sorteo ?? "Fecha por definir"}
             pending={!sorteo}
           />
-          {/* Decisión 03 del brief: el premio sigue sin definirse. */}
-          <InfoBadge label="Premio" value="Por definir" pending />
+          <InfoBadge label="Premio" value={PREMIO} />
         </div>
 
         <p style={estiloTexto}>

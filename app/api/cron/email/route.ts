@@ -5,9 +5,16 @@ import { plantilla, type TipoCorreo } from "@/lib/email";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// Un lote de 100 con reintentos puede pasarse de los 10 s por defecto.
+// El lote entero se manda en una petición, pero la toma, el cierre y el rescate
+// siguen siendo llamadas a la base: 10 s por defecto no alcanzan.
 export const maxDuration = 60;
 
+/*
+ * 100 es el máximo que acepta la API de lotes de Resend, así que el tamaño del
+ * lote y el de la petición coinciden por construcción. Subirlo obligaría a
+ * partir el lote en varias peticiones y a decidir qué hacer si la segunda falla
+ * después de que la primera salió.
+ */
 const LOTE = 100;
 
 /**
@@ -69,48 +76,127 @@ export async function GET(request: NextRequest) {
     sorteo_at: string | null;
   }>;
 
-  let enviados = 0;
-  let fallidos = 0;
+  if (filas.length === 0) {
+    return NextResponse.json({ tomados: 0, enviados: 0, fallidos: 0 });
+  }
 
-  /*
-   * En serie y no con Promise.all: 100 envíos simultáneos chocan con el límite
-   * de tasa de Resend y devuelven 429 en masa, con lo que el lote entero se
-   * marca en error y vuelve a la cola. En serie el lote tarda más pero llega.
-   */
-  for (const fila of filas) {
+  const piezas = filas.map((fila) => {
     const { asunto, html, texto } = plantilla(
       fila.tipo,
       fila.nombre,
       fila.sorteo_at ? new Date(fila.sorteo_at) : null,
     );
-    try {
-      const { data, error: errEnvio } = await resend.emails.send({
-        from,
-        to: fila.email,
-        replyTo: respuestaA(),
-        subject: asunto,
-        html,
-        text: texto,
-      });
+    return {
+      from,
+      to: fila.email,
+      replyTo: respuestaA(),
+      subject: asunto,
+      html,
+      text: texto,
+    };
+  });
 
-      if (errEnvio) throw new Error(errEnvio.message);
+  /*
+   * Una petición para todo el lote, no cien.
+   *
+   * Antes iba en serie —cien envíos, uno tras otro— justamente para no chocar
+   * con el límite de tasa de Resend, que devolvía 429 en masa. Pero con 9.000
+   * confirmaciones esperadas en un día, cien peticiones en serie contra un
+   * límite de 2 por segundo son unos 50 s, y el maxDuration es 60: el lote
+   * quedaba a un pelo de cortarse por la mitad todos los minutos del pico.
+   *
+   * `permissive` y no la validación estricta por defecto: en estricta, UNA
+   * dirección mal formada hace que el lote entero se rechace, y como esa fila
+   * vuelve a la cola con las mismas 99 compañeras, un solo correo malo frena a
+   * todos los demás en cada reintento. En permisiva la respuesta trae los
+   * fallos con su índice y el resto sale.
+   */
+  const { data: envio, error: errLote } = await resend.batch.send(piezas, {
+    batchValidation: "permissive",
+  });
 
-      await supabase.rpc("marcar_email_enviado", {
-        p_id: fila.id,
-        // El id del proveedor es lo que después permite casar un rebote con la
-        // inscripción que lo originó.
-        p_proveedor_id: data?.id ?? "",
-      });
-      enviados++;
-    } catch (e) {
-      const motivo = e instanceof Error ? e.message : String(e);
-      await supabase.rpc("marcar_email_error", {
-        p_id: fila.id,
-        p_error: motivo,
-      });
-      fallidos++;
-    }
+  if (errLote || !envio) {
+    // La petición no llegó a procesarse: no salió ninguno. Vuelven a la cola
+    // con su backoff, que es lo mismo que hacía el bucle fila por fila.
+    const motivo = errLote?.message ?? "batch.send no devolvió respuesta";
+    console.error("resend.batch.send falló:", motivo);
+    await supabase.rpc("marcar_emails_error", {
+      p_ids: filas.map((f) => f.id),
+      p_error: motivo,
+    });
+    return NextResponse.json({
+      tomados: filas.length,
+      enviados: 0,
+      fallidos: filas.length,
+    });
   }
 
-  return NextResponse.json({ tomados: filas.length, enviados, fallidos });
+  const fallos = new Map<number, string>();
+  for (const e of envio.errors ?? []) fallos.set(e.index, e.message);
+
+  /*
+   * El mapeo es POSICIONAL: `envio.data` trae un id por pieza que salió, en el
+   * orden en que se enviaron, y los índices de las que no salieron vienen en
+   * `errors`. Si las cuentas no cuadran, no hay forma de saber qué id
+   * corresponde a qué fila, y adivinar tiene dos consecuencias malas: marcar
+   * como enviada una que no salió (nadie recibe el correo) o cerrar una fila
+   * con el id de proveedor de otra (el rebote se le atribuye a quien no fue).
+   *
+   * Así que no se cierra nada: las filas quedan en 'enviando' y
+   * rescatar_emails_colgados las devuelve a la cola en 15 minutos. Puede
+   * duplicar un correo, y es a propósito: es el mismo riesgo que ya se asume
+   * cuando la instancia muere a mitad del lote, y es preferible a dejar sin
+   * aviso a un ganador.
+   */
+  if (envio.data.length + fallos.size !== filas.length) {
+    console.error(
+      `resend.batch.send devolvió ${envio.data.length} ids y ${fallos.size} errores para ${filas.length} piezas. ` +
+        "El lote queda sin cerrar y lo recupera rescatar_emails_colgados.",
+    );
+    return NextResponse.json({ error: "respuesta_inesperada" }, { status: 502 });
+  }
+
+  const idsOk: number[] = [];
+  const proveedorOk: string[] = [];
+  // Agrupados por mensaje: los fallos de un lote suelen compartir motivo, y así
+  // el cierre son una o dos llamadas y no una por fila.
+  const idsPorMotivo = new Map<string, number[]>();
+  let cursor = 0;
+
+  filas.forEach((fila, i) => {
+    const motivo = fallos.get(i);
+    if (motivo !== undefined) {
+      const previos = idsPorMotivo.get(motivo);
+      if (previos) previos.push(fila.id);
+      else idsPorMotivo.set(motivo, [fila.id]);
+      return;
+    }
+    idsOk.push(fila.id);
+    proveedorOk.push(envio.data[cursor]?.id ?? "");
+    cursor++;
+  });
+
+  if (idsOk.length > 0) {
+    const { error: errOk } = await supabase.rpc("marcar_emails_enviados", {
+      p_ids: idsOk,
+      p_proveedor_ids: proveedorOk,
+    });
+    // Los correos ya salieron: si el cierre falla, lo peor que pasa es que
+    // rescatar_emails_colgados los reintente. Se registra y no se aborta.
+    if (errOk) console.error("marcar_emails_enviados falló:", errOk.message);
+  }
+
+  for (const [motivo, ids] of idsPorMotivo) {
+    const { error: errMal } = await supabase.rpc("marcar_emails_error", {
+      p_ids: ids,
+      p_error: motivo,
+    });
+    if (errMal) console.error("marcar_emails_error falló:", errMal.message);
+  }
+
+  return NextResponse.json({
+    tomados: filas.length,
+    enviados: idsOk.length,
+    fallidos: fallos.size,
+  });
 }

@@ -43,7 +43,6 @@ type Resumen = {
   pruebas?: number;
 };
 
-type PorPanel = { origen: string; total: number; elegibles: number };
 
 type Jornada = {
   sorteo_id: number;
@@ -79,7 +78,6 @@ export default async function AdminPage() {
   const [
     estadoRes,
     resumenRes,
-    panelesRes,
     sorteosRes,
     jornadasRes,
     identidadesRes,
@@ -87,7 +85,6 @@ export default async function AdminPage() {
   ] = await Promise.all([
     estadoVigente(),
     supabase.rpc("resumen_inscripciones"),
-    supabase.rpc("resumen_por_panel"),
     supabase.rpc("listar_sorteos"),
     supabase.rpc("resumen_jornadas"),
     supabase.rpc("listar_identidades_prueba"),
@@ -101,7 +98,6 @@ export default async function AdminPage() {
   const resumen = (
     Array.isArray(resumenRes.data) ? resumenRes.data[0] : resumenRes.data
   ) as Resumen | null;
-  const paneles = (panelesRes.data ?? []) as PorPanel[];
   const sorteos = (sorteosRes.data ?? []) as Sorteo[];
   const jornadas = (jornadasRes.data ?? []) as Jornada[];
   const identidades = (identidadesRes.data ?? []) as IdentidadPrueba[];
@@ -319,35 +315,20 @@ export default async function AdminPage() {
               </div>
             )}
           </div>
-
-          <div className="tarjeta">
-            <h2 className="tarjeta__titulo">Por panel</h2>
-            {paneles.length === 0 ? (
-              <p className="vacio">Sin inscripciones todavía.</p>
-            ) : (
-              <div className="tabla-caja">
-                <table className="tabla">
-                  <thead>
-                    <tr>
-                      <th>Origen</th>
-                      <th>Total</th>
-                      <th>Elegibles</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paneles.map((p) => (
-                      <tr key={p.origen}>
-                        <td>{p.origen}</td>
-                        <td>{p.total}</td>
-                        <td>{p.elegibles}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
         </div>
+
+        {/*
+          No hay tarjeta «Por panel», y es a propósito. La atribución por ?p=
+          existe para comparar ubicaciones, y esta activación se concentra en un
+          solo punto: el QR está impreso contra la raíz del dominio, sin ?p=, así
+          que la tabla mostraría una única fila «directo» con el total completo
+          —un dato que ya está arriba— en la pantalla que el equipo mira durante
+          el sorteo.
+
+          La cañería sigue en pie (proxy.ts resuelve el origen, `inscripciones.
+          origen` lo guarda y el listado lo filtra): si alguna vez hay más de un
+          punto, esto vuelve a ser una tabla de tres líneas.
+        */}
 
         <PanelSorteos sorteos={sorteos} />
 

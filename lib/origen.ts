@@ -1,13 +1,14 @@
 /**
  * Atribución por panel (el ?p= del QR).
  *
- * Dos cambios de fondo respecto de la primera versión:
+ * El slug se guarda para MEDIR, no para mostrarse. Ninguna vista lo imprime:
+ * la portada nombra la sede, que es un dato de la campaña y no de la URL. Es
+ * deliberado por dos razones que ya costaron un arreglo cada una:
  *
- * 1. El nombre visible sale de una lista blanca, no de manipular el slug.
- *    Derivarlo con split("-").slice(0,-1) truncaba malls reales ("costanera"
- *    → "Panel por definir", "parque-arauco" → "Parque") y, como el slug viene
- *    crudo de la URL, permitía que /i?p=retira-tu-premio-ahora-01 mostrara
- *    texto elegido por un tercero dentro de una página con marca Betano.
+ * 1. El slug viene crudo de la URL, así que reflejarlo dejaba que
+ *    /i?p=retira-tu-premio-ahora-01 pusiera texto elegido por un tercero dentro
+ *    de una página con marca Betano. La lista blanca que lo contenía dejó de
+ *    hacer falta cuando el texto pasó a ser fijo.
  *
  * 2. El valor por defecto NO es un panel real. Antes el tráfico sin ?p= se
  *    acreditaba a parque-arauco-01, arruinando justamente la medición que el
@@ -19,21 +20,6 @@ export const COOKIE_ORIGEN = "edc_origen";
 
 /** proxy.ts resuelve el origen y lo pasa a las páginas por este header. */
 export const HEADER_ORIGEN = "x-edc-origen";
-
-/** TODO(§Qué falta 05): completar con los paneles reales antes de imprimir los QR. */
-const PANELES: Record<string, string> = {
-  "parque-arauco-01": "Parque Arauco",
-};
-
-/** Nombre para mostrar, o null si el slug no corresponde a un panel conocido. */
-export function nombrePanel(slug: string): string | null {
-  return PANELES[slug] ?? null;
-}
-
-/** Etiqueta para la UI; nunca refleja el slug crudo. */
-export function etiquetaPanel(slug: string): string {
-  return nombrePanel(slug) ?? "Panel por definir";
-}
 
 /**
  * Un slug se acepta para REGISTRO (aunque no esté en la lista blanca todavía,

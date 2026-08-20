@@ -306,26 +306,34 @@ export function jornadaDe(ahora: Date = new Date()): Jornada | null {
   );
 }
 
-/** "viernes 21 de agosto a las 21:00" — absoluta, para el correo, que se abre después. */
+/**
+ * "viernes 21 de agosto a las 21:00" — con hora, para las bases.
+ *
+ * La hora va porque en un texto legal el instante del sorteo es parte de lo que
+ * se declara. En lo que le llega a la persona —el correo y la confirmación— NO
+ * va: ahí se usa `diaSorteo`.
+ */
 export function fechaSorteo(d: Date): string {
   return `${diaConNombre(d)} a las ${hora(d)}`;
 }
 
 /**
- * "hoy a las 21:00" / "mañana a las 21:00" / "el domingo 23 de agosto a las 21:00".
+ * "viernes 21 de agosto" — el DÍA del sorteo, sin hora.
  *
- * Relativa porque se lee en el celular en el mall, segundos después de
- * inscribirse: "hoy a las 21:00" se entiende de una y "el viernes 21 de agosto"
- * obliga a pensar qué día es hoy. Ojo con el caso que hace falta el "mañana":
- * quien se inscribe el viernes a las 21:30 entra al sorteo del SÁBADO, y decirle
- * "hoy" sería mentirle.
+ * Es lo que ve la persona, en el correo y en la placa de la confirmación. Dos
+ * razones para no poner la hora:
+ *
+ * 1. Quien se inscribe el día X entra al sorteo del día X, y el día es toda la
+ *    información que necesita. La hora exacta no cambia nada de lo que va a
+ *    hacer y suma una cifra que hay que interpretar.
+ * 2. El instante que llega acá es `ventana_hasta` de la jornada, que en las
+ *    reales ES el sorteo, pero en la ventana de ensayo se recorta al comienzo de
+ *    la primera jornada de verdad. Con la hora, esa ventana anunciaba un
+ *    "sorteo a las 05:00" que es una apertura, no un sorteo. El día sale
+ *    correcto en los dos casos.
  */
-export function etiquetaJornada(j: Jornada, ahora: Date = new Date()): string {
-  const hoy = diaEnZona(ahora);
-  if (j.dia === hoy) return `hoy a las ${hora(j.sorteoAt)}`;
-  const dias = (Date.parse(j.dia) - Date.parse(hoy)) / 86_400_000;
-  if (dias === 1) return `mañana a las ${hora(j.sorteoAt)}`;
-  return `el ${fechaSorteo(j.sorteoAt)}`;
+export function diaSorteo(d: Date): string {
+  return diaConNombre(d);
 }
 
 /**
