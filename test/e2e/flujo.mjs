@@ -102,6 +102,7 @@ console.log("\n=== 3. El draft NO arrastra consentimiento ni datos de otra perso
   await p.waitForLoadState("networkidle");
   // Persona A llena y marca las casillas, sin enviar
   await p.goto(B + "/inscripcion", { waitUntil: "networkidle" });
+  check((await p.locator('input[type=checkbox]').count()) === 2, "el formulario solo muestra edad y bases, sin casilla promocional");
   await p.fill("#f-nombre", "Ana Perez");
   await p.fill("#f-email", "ana@correo.cl");
   await p.fill("#f-rut", "12.345.678-5");
@@ -120,7 +121,7 @@ console.log("\n=== 3. El draft NO arrastra consentimiento ni datos de otra perso
   check(new URL(p.url()).pathname === "/inscripcion", "no deja enviar sin marcar consentimiento");
   check((await p.locator("text=Necesitamos las dos casillas").count()) > 0, "muestra el error legal");
   const draft = await p.evaluate(() => localStorage.getItem("edc_draft"));
-  check(draft !== null && !/edad|bases|mkt/.test(draft), `el draft no contiene consentimiento (${draft?.slice(0,60)}...)`);
+  check(draft !== null && !/edad|bases/.test(draft), `el draft no contiene consentimiento (${draft?.slice(0,60)}...)`);
   await ctx.close();
 }
 
@@ -327,6 +328,8 @@ console.log("\n=== 8b. Portada y ruleta: ganador con folio ===");
   // La sede es fija: aparece tambien sin ?p=, que antes decia "Panel por definir".
   check((await p.locator("text=Costanera Center").count()) > 0, "la portada nombra la sede sin depender del ?p=");
   check((await p.locator("text=Panel por definir").count()) === 0, "ya no queda el placeholder de panel");
+  check((await p.getByRole("heading", { name: /confía y participa por 1 de los 90 eau de confianza/i }).count()) === 1,
+    "la portada muestra el nuevo titulo principal");
 
   await p.goto(B + "/inscripcion", { waitUntil: "networkidle" });
   await p.fill("#f-nombre", "Ana Perez");
@@ -338,10 +341,35 @@ console.log("\n=== 8b. Portada y ruleta: ganador con folio ===");
   await p.click('button[type=submit]');
   await p.waitForURL("**/listo", { timeout: 5000 });
   check((await p.locator("text=Girando la ruleta").count()) > 0, "muestra la animacion antes del resultado");
+  check((await p.locator(".ruleta__segmento").count()) === 6, "la ruleta tiene seis segmentos con perfume");
   await p.waitForTimeout(3100);
   check((await p.locator("text=¡Ganaste!").count()) > 0, "revela la pantalla de ganador");
   check((await p.locator("text=#007").count()) > 0, "muestra el folio correlativo");
   check((await p.locator("text=ana@correo.cl").count()) > 0, "dice a que correo fue el respaldo");
+  await ctx.close();
+}
+
+console.log("\n=== 8c. Modo pruebas: correlativo aislado ===");
+{
+  const { ctx, p } = await nueva({
+    status: 201,
+    body: { ok: true, ganador: true, numero_ganador: 2, pruebas: true },
+  });
+  await p.goto(B + "/edad?next=%2Finscripcion", { waitUntil: "domcontentloaded" });
+  await p.getByRole("button", { name: /tengo 18/i }).click();
+  await p.waitForURL("**/inscripcion", { timeout: 5000 });
+  await p.fill("#f-nombre", "Ana Perez");
+  await p.fill("#f-email", "ana@correo.cl");
+  await p.fill("#f-tel", "87654321");
+  await p.fill("#f-rut", "12.345.678-5");
+  await p.locator('input[type=checkbox]').nth(0).check();
+  await p.locator('input[type=checkbox]').nth(1).check();
+  await p.click('button[type=submit]');
+  await p.waitForURL("**/listo", { timeout: 5000 });
+  await p.waitForTimeout(3100);
+  check((await p.locator("text=PRUEBA 2").count()) > 0, "el ensayo muestra PRUEBA 2 y no un folio real");
+  check((await p.locator("text=#002").count()) === 0, "el ensayo nunca presenta #002");
+  check((await p.locator("text=Enviaremos el respaldo de prueba").count()) > 0, "el ganador de ensayo anuncia su correo de respaldo");
   await ctx.close();
 }
 
@@ -350,7 +378,7 @@ console.log("\n=== 9. /bases existe y es alcanzable sin puerta ===");
   const { ctx, p } = await nueva();
   const r = await p.goto(B + "/bases", { waitUntil: "domcontentloaded" });
   check(r.status() === 200 && new URL(p.url()).pathname === "/bases", `/bases responde 200 sin puerta (${r.status()} ${new URL(p.url()).pathname})`);
-  check((await p.locator("text=Responsable del tratamiento").count()) > 0, "/bases tiene la estructura de la Ley 21.719");
+  check((await p.locator("text=Responsable del tratamiento").count()) > 0, "/bases contiene la información del tratamiento de datos");
   await ctx.close();
 }
 

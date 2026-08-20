@@ -5,6 +5,7 @@ import type { Confirmado } from "@/lib/confirmado";
 import "@/styles/ruleta.css";
 
 const DURACION_MS = 2800;
+const SEGMENTOS = Array.from({ length: 6 }, (_, i) => i);
 
 /**
  * La animación representa una decisión que YA tomó PostgreSQL. Nunca calcula
@@ -28,7 +29,9 @@ export function ResultadoRuleta({
     const bytes = new Uint32Array(1);
     crypto.getRandomValues(bytes);
     const vueltas = 6 + (bytes[0] % 4);
-    const angulo = bytes[0] % 360;
+    // Se detiene en el centro de uno de los seis gajos visibles. El resultado
+    // ya viene de la base; este índice solo gobierna la animación cosmética.
+    const angulo = (bytes[0] % 6) * 60;
 
     const frame = requestAnimationFrame(() => {
       setGrados(vueltas * 360 + angulo);
@@ -63,7 +66,16 @@ export function ResultadoRuleta({
             className="ruleta__disco"
             style={{ "--giro-ruleta": `${grados}deg` } as CSSProperties}
           >
-            <span>EDC</span>
+            {SEGMENTOS.map((segmento) => (
+              <span
+                className="ruleta__segmento"
+                data-segmento={segmento}
+                key={segmento}
+              >
+                <BotellaRuleta />
+              </span>
+            ))}
+            <span className="ruleta__centro">EDC</span>
           </div>
         </div>
       </section>
@@ -89,10 +101,12 @@ export function ResultadoRuleta({
         </div>
 
         <div className="ruleta__folio">
-          <span>Número de ganador</span>
+          <span>{resultado.pruebas ? "Número de prueba" : "Número de ganador"}</span>
           <strong>
             {resultado.pruebas
-              ? "PRUEBA"
+              ? resultado.numeroGanador
+                ? `PRUEBA ${resultado.numeroGanador}`
+                : "PRUEBA"
               : resultado.numeroGanador
                 ? `#${String(resultado.numeroGanador).padStart(3, "0")}`
                 : "REVISAR"}
@@ -101,7 +115,8 @@ export function ResultadoRuleta({
 
         {resultado.pruebas ? (
           <p className="ruleta__aviso-prueba">
-            Ensayo: no descuenta stock ni permite retirar un premio.
+            Ensayo: no descuenta stock ni permite retirar un premio. Enviaremos
+            el respaldo de prueba a <strong>{resultado.email}</strong>.
           </p>
         ) : (
           <p className="ruleta__texto">
@@ -135,5 +150,31 @@ export function ResultadoRuleta({
         </p>
       )}
     </section>
+  );
+}
+
+/** Silueta vectorial liviana del perfume, repetida en los seis gajos. */
+function BotellaRuleta() {
+  return (
+    <svg viewBox="0 0 34 48" aria-hidden="true" focusable="false">
+      <path d="M13 2h8v6l4 3v4H9v-4l4-3V2Z" fill="currentColor" />
+      <rect x="5" y="14" width="24" height="30" rx="4" fill="currentColor" />
+      <rect
+        x="9"
+        y="21"
+        width="16"
+        height="13"
+        rx="1.5"
+        fill="none"
+        stroke="var(--color-ink)"
+        strokeWidth="1.4"
+      />
+      <path
+        d="M12 26h10M12 29h10"
+        stroke="var(--color-ink)"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }

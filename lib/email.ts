@@ -238,6 +238,7 @@ export function plantilla(
   nombre: string,
   sorteoAt?: Date | null,
   numeroGanador?: number | null,
+  numeroPrueba?: number | null,
 ): Plantilla {
   const quien = escapaHtml(primerNombre(nombre));
   const quienTexto = primerNombre(nombre);
@@ -267,7 +268,7 @@ ${PIE_TEXTO}`,
     };
   }
 
-  return ganaste(quien, quienTexto, numeroGanador);
+  return ganaste(quien, quienTexto, numeroGanador, numeroPrueba);
 }
 
 /**
@@ -287,18 +288,25 @@ function ganaste(
   quien: string,
   quienTexto: string,
   numeroGanador?: number | null,
+  numeroPrueba?: number | null,
 ): Plantilla {
-  const folio =
-    typeof numeroGanador === "number" && Number.isInteger(numeroGanador)
+  const esPrueba =
+    typeof numeroPrueba === "number" &&
+    Number.isInteger(numeroPrueba) &&
+    numeroPrueba >= 1;
+  const folio = esPrueba
+    ? `PRUEBA ${numeroPrueba}`
+    : typeof numeroGanador === "number" && Number.isInteger(numeroGanador)
       ? `#${String(numeroGanador).padStart(3, "0")}`
       : null;
+  const etiquetaFolio = esPrueba ? "Número de prueba" : "Número de ganador";
   const bloqueFolio = folio
     ? `<div style="margin:24px 0 4px;padding:18px 20px;background:${MARCA.bone};color:${MARCA.ink};border-radius:4px;">
-<span style="display:block;margin-bottom:5px;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;">Número de ganador</span>
+<span style="display:block;margin-bottom:5px;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;">${etiquetaFolio}</span>
 <strong style="font-size:38px;line-height:1;letter-spacing:.08em;">${folio}</strong>
 </div>`
     : "";
-  const lineaFolio = folio ? `\nNúmero de ganador: ${folio}.` : "";
+  const lineaFolio = folio ? `\n${etiquetaFolio}: ${folio}.` : "";
 
   return {
     asunto: "¡Ganaste! — Eau de Confianza",

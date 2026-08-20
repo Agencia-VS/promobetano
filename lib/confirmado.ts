@@ -10,7 +10,7 @@ export type Confirmado = {
   origen: string;
   /** Decisión definitiva tomada por la base al crear la inscripción. */
   ganador: boolean;
-  /** Folio global 1..90. En un ensayo ganador se omite para no gastar stock. */
+  /** Folio global 1..90, o correlativo aislado del ensayo cuando `pruebas`. */
   numeroGanador?: number;
   /**
    * Etiqueta del sorteo al que entró («hoy a las 21:00»), tal como la devolvió
@@ -48,7 +48,7 @@ function esConfirmado(x: unknown): x is Confirmado {
       (typeof d.numeroGanador === "number" &&
         Number.isInteger(d.numeroGanador) &&
         d.numeroGanador >= 1 &&
-        d.numeroGanador <= 90)) &&
+        (d.pruebas === true || d.numeroGanador <= 90))) &&
     // `sorteo` es opcional, pero si viene tiene que ser texto: sin este guard un
     // valor raro se interpolaría en JSX y crashearía /listo, que es el defecto
     // que ya ocurrió una vez con `email`.

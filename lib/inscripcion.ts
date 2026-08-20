@@ -8,7 +8,6 @@ export type InscripcionValues = {
   rut: string;
   edad: boolean;
   bases: boolean;
-  mkt: boolean;
 };
 
 export type CampoTexto = "nombre" | "email" | "tel" | "rut";
@@ -22,7 +21,6 @@ export const VALORES_INICIALES: InscripcionValues = {
   rut: "",
   edad: false,
   bases: false,
-  mkt: false,
 };
 
 /**
@@ -75,7 +73,7 @@ export function valida(v: InscripcionValues): InscripcionErrors {
  *
  * Dos reglas que no son negociables:
  *
- * 1. El borrador NUNCA guarda el consentimiento (edad / bases / marketing).
+ * 1. El borrador NUNCA guarda el consentimiento (edad / bases).
  *    Guardarlo hacía que las casillas se restauraran marcadas en el state pero
  *    DESMARCADAS en el DOM (React 19 marca el flag de dirty checkedness al
  *    hidratar y defaultChecked deja de propagar), así que la persona quedaba

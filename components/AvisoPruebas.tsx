@@ -4,9 +4,9 @@
  * Existe por una razón concreta y no por prolijidad: mientras el equipo prueba
  * en producción, el sitio está abierto para cualquiera que llegue por la URL o
  * por un QR ya impreso. Sin este aviso, alguien de paso entregaría su nombre,
- * su RUT y su correo creyendo que entra a un sorteo que no se va a hacer, y su
- * fila se borra después con la limpieza. Decirlo en la misma pantalla donde se
- * pide el dato es la diferencia entre un ensayo y un engaño.
+ * su RUT y su correo creyendo que el resultado consume un premio real, y su fila
+ * se borra después con la limpieza. Decirlo en la misma pantalla donde se pide
+ * el dato es la diferencia entre un ensayo y un engaño.
  *
  * Solo se pinta con el modo pruebas encendido desde /admin. En la activación
  * real no existe: no es una marca de borrador, es un estado operativo.
@@ -15,8 +15,8 @@ export function AvisoPruebas() {
   return (
     <p role="status" style={estilo}>
       <strong style={{ letterSpacing: ".08em" }}>ESTAMOS PROBANDO.</strong>{" "}
-      Las inscripciones de ahora no entran a ningún sorteo y se borran al
-      terminar la prueba. Vuelve cuando arranque el concurso.
+      La ruleta usa el N configurado, pero el resultado es de ensayo: no consume
+      stock ni permite retirar un premio. Los datos se borran al terminar.
     </p>
   );
 }

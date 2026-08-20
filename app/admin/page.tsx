@@ -32,7 +32,6 @@ type Resumen = {
    */
   personas?: number;
   elegibles: number;
-  con_marketing: number;
   rebotes: number;
   quejas: number;
   /**
@@ -151,9 +150,9 @@ export default async function AdminPage() {
         {CORREO_DATOS_SIN_CONFIGURAR && (
           <p className="aviso aviso--error">
             <strong>Bloqueante legal:</strong> el contacto de datos personales
-            sigue siendo <code>datos@example.com</code>. La Ley 21.719 obliga a
-            atender por esa vía las solicitudes de acceso y eliminación. Cárgalo
-            en <code>NEXT_PUBLIC_CORREO_DATOS</code>.
+            sigue siendo <code>datos@example.com</code>. Las solicitudes sobre
+            datos personales necesitan un canal real y atendido. Cárgalo en{" "}
+            <code>NEXT_PUBLIC_CORREO_DATOS</code>.
           </p>
         )}
 
@@ -227,7 +226,6 @@ export default async function AdminPage() {
                     grande se lee como personas y no lo es. */}
                 <Cifra valor={resumen.personas} nombre="Personas" />
                 <Cifra valor={resumen.elegibles} nombre="Elegibles" />
-                <Cifra valor={resumen.con_marketing} nombre="Marketing" />
                 <Cifra valor={resumen.rebotes} nombre="Rebotes" />
                 <Cifra valor={resumen.quejas} nombre="Quejas" />
                 {/* Se pinta solo cuando hay: en la activación real es siempre

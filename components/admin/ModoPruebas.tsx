@@ -21,9 +21,10 @@ type Purga = {
  *
  * Es una tarjeta aparte del interruptor de inscripciones, aunque las dos
  * «abran», porque lo que hacen es distinto y confundirlas sale caro. El
- * interruptor abre el concurso DE VERDAD: lo que entre cuenta, se sortea y se
- * conserva. Esto abre una ventana de ensayo que no se sortea, se avisa en el
- * formulario y se borra entera después.
+ * interruptor abre el concurso DE VERDAD: lo que entre consume stock, usa el
+ * correlativo 1..90 y se conserva. Esto abre una ventana de ensayo que ejecuta
+ * la misma lógica por bloques N, pero con stock y correlativos PRUEBA separados;
+ * se avisa en el formulario y se borra entera después.
  *
  * Fuera de la ventana del concurso, además, el interruptor por sí solo no
  * alcanza: ninguna jornada cubre el instante y la base rechaza cada alta. Esa
@@ -172,8 +173,8 @@ export function ModoPruebas({
 
       <p className="estado__fuente">
         {activo
-          ? "El formulario está aceptando altas y avisa, en la misma pantalla, que no entran a ningún sorteo. Ciérralo antes de que abra el concurso."
-          : "Abre una ventana de ensayo con su propia jornada. Lo que entre por ella no se sortea, no cuenta en las cifras y se borra con el botón de abajo."}
+          ? "El formulario está ensayando la ruleta con el N configurado. Usa bloques, números PRUEBA y correos aislados; no consume premios reales. Ciérralo antes de que abra el concurso."
+          : "Abre una jornada aislada que recorre la ruleta real con el N configurado. Sus ganadores reciben PRUEBA 1, PRUEBA 2… y correo de respaldo, sin tocar el stock 1–90."}
       </p>
 
       {activo && !recibiendoAltas && (
@@ -194,6 +195,13 @@ export function ModoPruebas({
         {correos.map((c) => <code key={c.valor}>{c.valor}</code>)}. El resto de
         los RUT sigue con una inscripción por jornada, así que el mensaje de «ya
         estás inscrito» también se puede probar.
+      </p>
+
+      <p className="estado__fuente" style={{ marginTop: 8 }}>
+        El resultado no es 50/50: hay una posición ganadora aleatoria dentro de
+        cada bloque de N. Si cambias N en el panel, el valor nuevo comienza en el
+        siguiente bloque completo. El correo del ganador sale por la misma cola y
+        cron de producción, rotulado como prueba.
       </p>
 
       <p className="estado__fuente" style={{ marginTop: 8 }}>

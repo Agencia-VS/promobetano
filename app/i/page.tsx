@@ -44,22 +44,37 @@ export default async function PortadaPage() {
             style={{ marginTop: 34, marginBottom: 8, display: "block" }}
           />
 
-          <h1
+          <p
             style={{
               margin: "26px 0 0",
               fontFamily: "var(--font-title)",
-              fontWeight: 800,
-              // El titular es el elemento de campaña: en móvil son 25px y en
-              // escritorio crece con el viewport hasta que la caja lo topa.
-              fontSize: "clamp(25px, 3.2vw, 44px)",
-              lineHeight: 1.06,
-              letterSpacing: ".055em",
+              fontWeight: 600,
+              fontSize: "clamp(11px, 1vw, 13px)",
+              lineHeight: 1.45,
+              letterSpacing: ".18em",
               textTransform: "uppercase",
-              color: "#FFFFFF",
+              color: "rgba(255,255,255,.82)",
+              maxWidth: "42ch",
               textWrap: "pretty",
             }}
           >
             Hay un aroma para el momento en que decides confiar en ti
+          </p>
+
+          <h1
+            style={{
+              margin: "14px 0 0",
+              fontFamily: "var(--font-title)",
+              fontWeight: 800,
+              fontSize: "clamp(27px, 3.45vw, 47px)",
+              lineHeight: 1.02,
+              letterSpacing: ".045em",
+              textTransform: "uppercase",
+              color: "#FFFFFF",
+              textWrap: "balance",
+            }}
+          >
+            Confía y participa por 1 de los 90 Eau de Confianza
           </h1>
 
           <p

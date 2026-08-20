@@ -62,7 +62,7 @@ function mensajeDeFalla(codigo: unknown): string {
  *
  * Se separó del marco para poder usarlo en dos sitios sin duplicarlo: la ruta
  * /inscripcion a pantalla completa y el modal de escritorio que la intercepta.
- * Duplicar un formulario con nueve campos, tres consentimientos y una máquina
+ * Duplicar un formulario con cuatro campos, dos consentimientos y una máquina
  * de errores es la forma más segura de que dentro de un mes uno de los dos
  * valide distinto que el otro.
  */
@@ -205,7 +205,6 @@ export function FormularioInscripcion({
           rut: v.rut,
           edad: v.edad,
           bases: v.bases,
-          mkt: v.mkt,
           request_id: requestId.current,
         }),
       });
@@ -424,16 +423,6 @@ export function FormularioInscripcion({
               {e.legal}
             </span>
           )}
-          {/* La Ley 21.719 exige consentimiento específico por finalidad:
-              esta casilla va separada, opcional y nunca preseleccionada. */}
-          <div style={{ borderTop: "1px solid rgba(60,0,0,.18)" }}>
-            <Casilla checked={v.mkt} onChange={(x) => set("mkt", x)}>
-              Quiero recibir promociones de Betano.{" "}
-              <span style={{ color: "rgba(255,255,255,.72)" }}>
-                Opcional.
-              </span>
-            </Casilla>
-          </div>
         </div>
 
         {falla && (

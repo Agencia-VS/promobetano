@@ -44,7 +44,8 @@ nació.
 5. En **Resumen**, dejar el interruptor de inscripciones en **Calendario**. Un
    override manual abierto o cerrado sigue teniendo prioridad operativa.
 6. Probar el flujo con el modo de pruebas y las identidades que muestra el
-   panel. Los resultados de prueba dicen `PRUEBA`, no toman stock ni folio.
+   panel. El ensayo usa el N y los bloques configurados, numera a sus ganadores
+   como `PRUEBA 1`, `PRUEBA 2`… y encola el correo sin tomar stock ni folio real.
 7. Imprimir desde `/admin/ruleta` la hoja de control 1–90.
 
 La migración va antes que el código para que la nueva RPC exista cuando llegue
@@ -53,16 +54,20 @@ no encola confirmaciones.
 
 ## Smoke test previo a apertura
 
-- Completar dos o más inscripciones con identidad de prueba.
+- Purgar cualquier ensayo anterior y, en `/admin/ruleta`, poner la próxima
+  jornada en modo manual con `N=1`. Así la primera inscripción de una prueba
+  limpia debe ganar; un bloque ya abierto conservaría su N anterior.
+- Abrir **Pruebas en producción** y completar una inscripción con la identidad
+  de prueba que muestra el panel.
 - Confirmar que aparece primero la animación y después un resultado estable.
 - Recargar la pantalla: debe conservar el mismo resultado de esa inscripción.
-- En una prueba ganadora debe aparecer `PRUEBA`, nunca un número real.
+- Debe aparecer `PRUEBA 1`, nunca `#001` ni otro número real.
+- Confirmar que llega el correo con asunto `[PRUEBA]` y el mismo `PRUEBA N`.
 - Confirmar que no llega correo de confirmación.
 - Verificar que `/admin/ruleta` sigue mostrando `0/30` y `0/90` después de las
   pruebas.
-- Cambiar a modo manual, guardar un `N`, comprobar que “N siguiente” cambió y
-  reactivar explícitamente el modo automático.
 - Volver a purgar los datos de prueba desde **Resumen**.
+- Reactivar explícitamente el modo automático antes de abrir al público.
 
 ## Controles durante la activación
 

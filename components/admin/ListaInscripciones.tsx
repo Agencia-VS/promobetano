@@ -15,7 +15,6 @@ type Fila = {
   origen: string;
   elegible: boolean;
   email_estado: string;
-  acepta_marketing: boolean;
   sorteo_id: number;
   /** Fila de ensayo. No cuenta en ninguna cifra y se borra desde /admin. */
   es_prueba: boolean;
@@ -180,7 +179,6 @@ export function ListaInscripciones({
               <th>RUT</th>
               <th>Panel</th>
               <th>Correo</th>
-              <th>Mkt</th>
             </tr>
           </thead>
           <tbody>
@@ -215,7 +213,6 @@ export function ListaInscripciones({
                     f.email_estado
                   )}
                 </td>
-                <td>{f.acepta_marketing ? "sí" : "—"}</td>
               </tr>
             ))}
           </tbody>

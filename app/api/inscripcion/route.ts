@@ -56,7 +56,6 @@ export async function POST(request: NextRequest) {
     rut: texto(datos.rut),
     edad: datos.edad === true,
     bases: datos.bases === true,
-    mkt: datos.mkt === true,
   };
 
   const errores = valida(valores);
@@ -90,7 +89,9 @@ export async function POST(request: NextRequest) {
     p_documento: valores.rut,
     p_declara_edad: valores.edad,
     p_acepta_bases: valores.bases,
-    p_acepta_marketing: valores.mkt,
+    // El formulario ya no solicita autorizaciones promocionales. La columna
+    // histórica se conserva en la base, pero toda alta nueva queda en false.
+    p_acepta_marketing: false,
     p_origen: origen,
     p_request_id: requestId,
   });
@@ -114,12 +115,12 @@ export async function POST(request: NextRequest) {
         typeof fila?.numero_ganador === "number" &&
         Number.isInteger(fila.numero_ganador) &&
         fila.numero_ganador >= 1 &&
-        fila.numero_ganador <= 90
+        (pruebas || fila.numero_ganador <= 90)
           ? fila.numero_ganador
           : null;
-      if (ganador && !pruebas && numeroGanador === null) {
+      if (ganador && numeroGanador === null) {
         console.error(
-          "crear_inscripcion_ruleta devolvió ganador real sin folio:",
+          "crear_inscripcion_ruleta devolvió ganador sin correlativo:",
           fila?.inscripcion_id,
         );
         return NextResponse.json({ error: "servidor" }, { status: 502 });

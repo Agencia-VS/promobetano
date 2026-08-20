@@ -79,8 +79,8 @@ export const POST = conSesion(async ({ request, usuario }) => {
     );
   }
 
-  // #001 es parte del contenido de prueba; no toca el contador real.
-  const { asunto, html, texto } = plantilla(tipo, nombre, null, 1);
+  // PRUEBA 1 es parte del contenido de prueba; no toca el contador real.
+  const { asunto, html, texto } = plantilla(tipo, nombre, null, null, 1);
 
   try {
     const { data, error } = await resend.emails.send({

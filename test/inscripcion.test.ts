@@ -47,9 +47,8 @@ test("exige nombre y apellido", () => {
   assert.equal(validaCampo("nombre", { ...base, nombre: "Ana Pérez" }), null);
 });
 
-test("las dos casillas legales son obligatorias y la de marketing no", () => {
+test("las dos casillas legales son obligatorias", () => {
   assert.ok(valida({ ...base, edad: false }).legal);
   assert.ok(valida({ ...base, bases: false }).legal);
-  assert.deepEqual(valida({ ...base, mkt: false }), {});
-  assert.deepEqual(valida({ ...base, mkt: true }), {});
+  assert.deepEqual(valida(base), {});
 });

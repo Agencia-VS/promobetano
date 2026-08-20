@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 const TIPOS = [
-  { valor: "ganador", nombre: "Ganador con folio #001" },
+  { valor: "ganador", nombre: "Ganador con número PRUEBA 1" },
 ] as const;
 
 /**

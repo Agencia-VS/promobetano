@@ -142,6 +142,15 @@ test("el correo de ganador es un respaldo simple con su folio", () => {
   assert.doesNotMatch(html, /el equipo se contactará contigo/i);
 });
 
+test("el ganador de ensayo recibe un correlativo PRUEBA separado", () => {
+  const { html, texto } = plantilla("ganador", "Ana Pérez", null, null, 2);
+  assert.match(html, /Número de prueba/);
+  assert.match(html, /PRUEBA 2/);
+  assert.match(texto, /Número de prueba: PRUEBA 2/);
+  assert.doesNotMatch(html, /#002/);
+  assert.doesNotMatch(texto, /Número de ganador/);
+});
+
 test("la confirmación conserva los pasos y el respaldo de ganador es breve", () => {
   // En la confirmación todavía no se ganó nada: «si te lo ganas». En el correo
   // de ganador el premio ya es de la persona: «te lo ganaste». Mezclarlos es

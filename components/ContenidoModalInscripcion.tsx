@@ -39,7 +39,7 @@ export function ContenidoModalInscripcion({
     <>
       {/* La marca vuelve a aparecer acá porque el modal tapa la portada: quien
           está llenando el formulario ya no ve el lockup que lo trajo, y un
-          panel con cuatro campos y tres consentimientos sin ninguna firma
+          panel con cuatro campos y dos consentimientos sin ninguna firma
           visible se parece demasiado a cualquier otro formulario. */}
       <div
         className="modal-fila-marca"

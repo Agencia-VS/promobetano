@@ -74,8 +74,9 @@ export async function GET(request: NextRequest) {
      * Null en los sorteos ad-hoc sin ventana; la plantilla omite la línea.
      */
     sorteo_at: string | null;
-    /** Folio global de la ruleta. Null solo en correos históricos. */
+    /** Folio real o correlativo de prueba, según `es_prueba`. */
     numero_ganador: number | null;
+    es_prueba: boolean;
   }>;
 
   if (filas.length === 0) {
@@ -87,13 +88,14 @@ export async function GET(request: NextRequest) {
       fila.tipo,
       fila.nombre,
       fila.sorteo_at ? new Date(fila.sorteo_at) : null,
-      fila.numero_ganador,
+      fila.es_prueba ? null : fila.numero_ganador,
+      fila.es_prueba ? fila.numero_ganador : null,
     );
     return {
       from,
       to: fila.email,
       replyTo: respuestaA(),
-      subject: asunto,
+      subject: fila.es_prueba ? `[PRUEBA] ${asunto}` : asunto,
       html,
       text: texto,
     };

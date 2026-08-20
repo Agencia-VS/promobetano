@@ -17,15 +17,7 @@ export const metadata: Metadata = {
  *
  * El documento se adaptó desde las bases del concurso anterior ("Final
  * Experience Betano"), conservando su estructura y los datos del responsable.
- * DOS CAMBIOS DE FONDO respecto de aquel texto, que no son de redacción:
- *
- * 1. Aquel decía "no se usarán para marketing, publicidad ni perfilamiento".
- *    Acá NO puede decir eso: el formulario tiene una casilla separada y
- *    opcional de comunicaciones comerciales. Copiar la cláusula anterior
- *    contradiría lo que la persona acaba de marcar en pantalla, y un
- *    consentimiento que contradice las bases es un consentimiento inválido.
- *
- * 2. Aquel concurso no era de una marca de apuestas dirigiéndose al público
+ * El concurso anterior no era de una marca de apuestas dirigiéndose al público
  *    con un producto de consumo. Acá la mayoría de edad no es solo un
  *    requisito de participación: es una condición de la comunicación misma,
  *    y por eso tiene su propia sección.
@@ -37,18 +29,18 @@ export const metadata: Metadata = {
  * decisiones que afectan la redacción legal:
  *
  *   · Betano es la MARCA de la campaña, no un destinatario de los datos. El
- *     Organizador es el único responsable, también para las comunicaciones
- *     comerciales. Es lo que hace el código: no hay integración con ningún CRM.
- *     Si algún día se agrega, hace falta consentimiento nuevo y esta §1 cambia.
+ *     Organizador es el único responsable. El formulario ya no solicita ni
+ *     registra autorización para promociones y no hay integración con un CRM.
  *   · Exclusiones: trabajadores del Organizador, de Betano y de las agencias, más
  *     cónyuge/conviviente y parientes hasta segundo grado. Es el estándar.
  *   · Premio: un frasco del perfume de la campaña por ganador. NO se declara un
  *     valor en pesos: no es exigible y un número inventado sí lo sería en contra.
  *   · Entrega: inmediata en la mesa, mostrando una pantalla con folio correlativo.
  *     El correo de ganador es solo un respaldo.
- *   · Conservación: 12 meses para el sorteo, 24 para marketing. Plazos relativos y
- *     no fechas fijas, para que no queden desfasados si la activación se mueve.
- *   · Respuesta a solicitudes ARCO+: 30 días corridos.
+ *   · Conservación: 12 meses para administrar y acreditar la Activación. Es un
+ *     plazo relativo para que no quede desfasado si se mueve el calendario.
+ *   · La Ley 21.719 fue publicada, pero sus modificaciones entran en vigor el
+ *     1 dic 2026. La activación de agosto se rige por la Ley 19.628 vigente.
  *   · Juego responsable: se remite a un profesional de salud SIN dar un teléfono.
  *     Publicar un número equivocado en una cláusula legal es peor que no darlo; si
  *     el cliente entrega el canal oficial, va acá.
@@ -140,8 +132,8 @@ export default async function BasesPage() {
       <Seccion titulo="1. Responsable del tratamiento">
         Para la activación «Eau de Confianza» (en adelante, la «Activación»), el
         responsable del tratamiento de los datos personales, conforme a la Ley
-        N° 19.628 modificada por la Ley N° 21.719 sobre Protección de Datos
-        Personales, es <strong>AGENCIA VS SPA</strong>, RUT{" "}
+        N° 19.628 sobre Protección de la Vida Privada, vigente durante las
+        fechas de esta Activación, es <strong>AGENCIA VS SPA</strong>, RUT{" "}
         <strong>77.043.073-9</strong>, con domicilio en{" "}
         <strong>Diagonal Oriente 1850, Providencia</strong> (en adelante, el
         «Organizador»).
@@ -157,12 +149,11 @@ export default async function BasesPage() {
         <strong>Betano</strong> es la marca de la campaña a la que pertenece la
         Activación. Los datos de los participantes <strong>no se ceden</strong> a
         Betano ni a ningún otro tercero en calidad de responsable: el Organizador
-        es el único responsable del tratamiento, tanto para administrar el sorteo
-        (sección 8) como para las comunicaciones comerciales que el participante
-        haya autorizado por separado (sección 9). Si en el futuro el Organizador
-        quisiera comunicar estos datos a un tercero como responsable, ello
-        requeriría un consentimiento nuevo, específico y separado, solicitado al
-        titular antes de la comunicación.
+        es el único responsable del tratamiento para administrar la Activación
+        (sección 8). Los datos no se utilizarán para promociones, publicidad ni
+        perfilamiento. Si en el futuro el Organizador quisiera destinarlos a
+        otra finalidad o comunicarlos a un tercero como responsable, deberá
+        contar previamente con la habilitación que exija la normativa vigente.
       </Seccion>
 
       <Seccion titulo="2. En qué consiste la Activación">
@@ -306,56 +297,33 @@ export default async function BasesPage() {
       </Seccion>
 
       <Seccion titulo="8. Datos que tratamos y con qué finalidad">
-        Al inscribirse, el participante otorga su{" "}
-        <strong>consentimiento libre, específico, informado e inequívoco</strong>{" "}
-        para que el Organizador trate los siguientes datos: nombre y apellido,
+        Al inscribirse, el participante autoriza al Organizador a tratar los
+        siguientes datos: nombre y apellido,
         correo electrónico, teléfono y número de cédula de identidad. Se
         registra además el panel desde el cual se escaneó el código QR, con
         fines exclusivamente estadísticos.
         <br />
         <br />
-        <strong>Finalidad de esta primera autorización:</strong> administrar la
+        <strong>Única finalidad de esta autorización:</strong> administrar la
         Activación —validar la inscripción, verificar la unicidad, resolver la
-        ruleta, notificar a los ganadores y gestionar la entrega del premio—. La
-        base de licitud es el consentimiento otorgado al aceptar estas bases.
+        ruleta, notificar a los ganadores, gestionar la entrega del premio y
+        acreditar el resultado—. La autorización se otorga al aceptar estas
+        bases. Los datos <strong>no se utilizarán para enviar promociones ni
+        comunicaciones comerciales</strong>.
       </Seccion>
 
-      <Seccion titulo="9. Comunicaciones comerciales (opcional y separada)">
-        El formulario incluye una <strong>segunda casilla, independiente y no
-        preseleccionada</strong>, mediante la cual el participante puede
-        autorizar el envío de comunicaciones comerciales. Esa autorización:
+      <Seccion titulo="9. Proveedores tecnológicos">
+        Para operar la Activación intervienen proveedores de infraestructura de
+        base de datos, alojamiento de la aplicación y envío de correo
+        electrónico. Estos proveedores procesan datos únicamente para prestar
+        esos servicios por cuenta del Organizador y deben aplicar las medidas de
+        seguridad y obligaciones contractuales correspondientes.
         <br />
         <br />
-        <strong>(a)</strong> es enteramente voluntaria y{" "}
-        <strong>no condiciona la participación en el sorteo</strong>: quien no
-        la marque participa exactamente en las mismas condiciones;
-        <br />
-        <strong>(b)</strong> constituye una finalidad distinta de la del punto
-        8, conforme a la exigencia de especificidad de la Ley N° 21.719; y
-        <br />
-        <strong>(c)</strong> puede retirarse en cualquier momento, sin
-        expresión de causa, escribiendo a{" "}
-        <a href={`mailto:${CORREO_DATOS}`}>{CORREO_DATOS}</a>, y también desde
-        el enlace de baja incluido en cada comunicación.
-        <br />
-        <br />
-        Bajo esta autorización, el <strong>único responsable</strong> del
-        tratamiento sigue siendo el Organizador, que envía las comunicaciones por
-        su cuenta y referidas a la Activación y a las marcas de la campaña. Esta
-        autorización <strong>no implica una cesión de los datos</strong> a Betano
-        ni a ningún otro tercero en calidad de responsable; si el Organizador
-        quisiera hacerlo, tendría que solicitar antes un consentimiento nuevo y
-        separado.
-        <br />
-        <br />
-        Sí intervienen <strong>encargados del tratamiento</strong>, que actúan por
-        cuenta y bajo instrucción del Organizador y no pueden usar los datos para
-        fines propios: los proveedores de infraestructura de base de datos, de
-        alojamiento de la aplicación y de envío de correo electrónico. Algunos de
-        esos proveedores almacenan o procesan los datos{" "}
-        <strong>fuera de Chile</strong>, lo que implica una transferencia
-        internacional amparada en cláusulas contractuales que imponen al proveedor
-        un nivel de protección equivalente al de la Ley N° 21.719.
+        Algunos proveedores pueden almacenar o procesar datos fuera de Chile.
+        El Organizador debe adoptar las salvaguardas contractuales y de seguridad
+        exigibles conforme a la normativa aplicable y mantener el uso limitado a
+        la finalidad indicada en la sección 8.
       </Seccion>
 
       <Seccion titulo="10. Plazo de conservación">
@@ -365,13 +333,6 @@ export default async function BasesPage() {
         Ese plazo cubre la entrega de los premios y el tiempo razonable para
         atender un reclamo o una fiscalización sobre el resultado del sorteo, y se
         extiende solo si una obligación legal exige conservarlos por más tiempo.
-        <br />
-        <br />
-        Los datos de quienes hayan otorgado además la autorización del punto 9
-        se conservan para esa finalidad hasta{" "}
-        <strong>24 meses</strong> o hasta que la persona retire su consentimiento,
-        lo que ocurra primero. Retirar esa autorización no afecta la validez de la
-        participación en el sorteo.
       </Seccion>
 
       <Seccion titulo="11. Seguridad">
@@ -384,14 +345,20 @@ export default async function BasesPage() {
       </Seccion>
 
       <Seccion titulo="12. Derechos del titular">
-        El participante puede solicitar en cualquier momento el acceso, la
-        rectificación, la supresión, la oposición, la portabilidad y el bloqueo
-        de sus datos escribiendo a{" "}
+        Conforme a la Ley N° 19.628 vigente, el participante puede solicitar
+        información sobre sus datos y su tratamiento, pedir la modificación o
+        actualización de datos inexactos y, cuando corresponda legalmente, su
+        eliminación o bloqueo. Para ejercer estos derechos puede escribir a{" "}
         <a href={`mailto:${CORREO_DATOS}`}>{CORREO_DATOS}</a>, indicando su
-        nombre y RUT para poder verificar su identidad. La solicitud se responde
-        dentro del plazo que establece la ley y, en todo caso, dentro de{" "}
-        <strong>30 días corridos</strong> desde su recepción. Asimismo, puede
-        reclamar ante la autoridad de protección de datos personales.
+        nombre y RUT para verificar su identidad. La solicitud se responderá
+        conforme al procedimiento y dentro de los plazos establecidos por la
+        normativa vigente.
+        <br />
+        <br />
+        La Ley N° 21.719, que introduce un nuevo régimen de protección de datos
+        personales, entra en vigencia el 1 de diciembre de 2026, con posterioridad
+        a esta Activación. Desde esa fecha se aplicarán los derechos, procedimientos
+        y autoridades que correspondan bajo dicho régimen.
       </Seccion>
 
       <Seccion titulo="13. Exclusivo para mayores de 18 años · Juego responsable">
@@ -424,8 +391,8 @@ export default async function BasesPage() {
           color: "rgba(249,241,233,.62)",
         }}
       >
-        Última actualización: 19 de agosto de 2026. Documento preparado conforme
-        a la Ley N° 21.719.
+        Última actualización: 20 de agosto de 2026. Documento preparado conforme
+        a la Ley N° 19.628 vigente durante la Activación.
       </p>
 
       <div

@@ -82,13 +82,13 @@ por sobre la cookie, y el nombre visible sale de una lista blanca en
 defecto es `directo`, no un panel real.
 
 **Se puede ensayar en producción sin ensuciar el sorteo.** «Pruebas en
-producción», en `/admin`, abre una ventana de ensayo con su propia jornada
-—encajada entre las reales y cerrada sola cuando la primera de verdad empieza—,
-marca cada fila que entre por ella y avisa en el formulario que esas
-inscripciones no participan. El RUT y el correo del equipo se inscriben sin
-límite; el resto sigue con una por jornada. «Borrar datos de prueba» los elimina
-enteros. Un ensayo puede mostrar ambos resultados, pero nunca toma stock ni un
-folio 1–90. Ver `supabase/migrations/20260820120000_pruebas.sql`.
+producción», en `/admin`, abre una ventana aislada que usa la configuración N y
+la misma lógica de bloques de la ruleta real. El sitio lo avisa antes de pedir
+datos. El RUT y el correo del equipo se inscriben sin límite; el resto sigue con
+una por jornada. Los ganadores reciben `PRUEBA 1`, `PRUEBA 2`… y un correo de
+respaldo, pero nunca consumen stock ni un folio real 1–90. «Borrar datos de
+prueba» reinicia ese carril. Ver las migraciones
+`20260820120000_pruebas.sql` y `20260820233000_ruleta_pruebas_reales.sql`.
 
 **El halo de fondo es CSS**, reemplaza el `FONDO.png` de 2,1 MB, y no usa
 `filter: blur()` (forzaba una superficie offscreen de ~21 MB antes del primer

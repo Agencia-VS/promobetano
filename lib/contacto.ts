@@ -1,5 +1,5 @@
 /**
- * Contacto para derechos del titular (Ley 21.719, derechos ARCO+).
+ * Contacto para ejercer los derechos del titular bajo la normativa vigente.
  *
  * Sale de una variable de entorno porque la casilla la define el responsable
  * del tratamiento y no el repositorio, y porque cambiarla no debería costar un
