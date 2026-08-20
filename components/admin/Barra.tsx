@@ -27,6 +27,12 @@ export function Barra({ correo }: { correo: string }) {
         >
           Inscripciones
         </Link>
+        <Link
+          href="/admin/ruleta"
+          aria-current={ruta === "/admin/ruleta" ? "page" : undefined}
+        >
+          Ruleta
+        </Link>
         <span
           style={{
             fontSize: 12,

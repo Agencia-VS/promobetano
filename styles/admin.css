@@ -70,6 +70,23 @@
   gap: 20px;
 }
 
+.adm__titulo-pagina {
+  margin: 0;
+  font-family: var(--font-title);
+  font-weight: 800;
+  font-size: clamp(24px, 3vw, 38px);
+  line-height: 1.05;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.adm__bajada {
+  margin: 6px 0 0;
+  color: rgba(249, 241, 233, 0.65);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
 .adm__rejilla {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -276,6 +293,30 @@
   align-items: end;
 }
 
+.ruleta-admin__cifras {
+  margin-bottom: 16px;
+}
+
+.ruleta-admin__bloque {
+  margin-bottom: 16px;
+}
+
+.ruleta-admin__fechas {
+  margin-top: 12px;
+}
+
+.casilla-papel {
+  display: inline-block;
+  width: 17px;
+  height: 17px;
+  border: 1.5px solid currentColor;
+  vertical-align: middle;
+}
+
+.tabla--ganadores td:first-child {
+  font-variant-numeric: tabular-nums;
+}
+
 /* ── Tablas ───────────────────────────────────────────────────────────────── */
 
 .tabla-caja {
@@ -409,4 +450,84 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+@media (max-width: 720px) {
+  .adm__barra {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .adm__nav {
+    width: 100%;
+    overflow-x: auto;
+    margin-inline-start: 0;
+  }
+}
+
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 9mm;
+  }
+
+  .adm,
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  .adm__barra,
+  .no-imprimir,
+  .lista-impresion .tarjeta__cabecera .no-imprimir {
+    display: none !important;
+  }
+
+  .adm__cuerpo {
+    display: block;
+    max-width: none;
+    padding: 0;
+  }
+
+  .adm__cuerpo > div:first-child {
+    margin-bottom: 6mm;
+  }
+
+  .adm__bajada,
+  .tarjeta__titulo {
+    color: #222;
+  }
+
+  .lista-impresion {
+    padding: 0;
+    border: 0;
+    background: #fff;
+  }
+
+  .tabla-caja {
+    overflow: visible;
+  }
+
+  .tabla--ganadores {
+    white-space: normal;
+    font-size: 8px;
+  }
+
+  .tabla--ganadores th,
+  .tabla--ganadores td {
+    padding: 2px 5px 2px 0;
+    color: #000;
+    border-color: #bbb;
+    line-height: 1.1;
+  }
+
+  .tabla--ganadores tr:hover td {
+    background: transparent;
+  }
+
+  .casilla-papel {
+    width: 10px;
+    height: 10px;
+  }
 }

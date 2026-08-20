@@ -1,16 +1,16 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { usuarioAdmin } from "@/lib/supabase/servidor";
 import { estadoVigente } from "@/lib/concurso-servidor";
 import {
   cierre,
   fechaYHora,
   inicio,
-  jornadaDe,
   problemasCalendario,
 } from "@/lib/concurso";
 import { Barra } from "@/components/admin/Barra";
 import { InterruptorConcurso } from "@/components/admin/InterruptorConcurso";
-import { PanelSorteos, type Sorteo } from "@/components/admin/PanelSorteos";
+import type { Sorteo } from "@/components/admin/PanelSorteos";
 import {
   ModoPruebas,
   type IdentidadPrueba,
@@ -123,11 +123,6 @@ export default async function AdminPage() {
    * entere. Por eso se compara lo que dice el entorno con lo que hay en la base.
    */
   const problemas = problemasCalendario();
-  const jornadaAhora = jornadaDe();
-  // La jornada de ensayo NO cuenta como «la base está al día»: cubre este
-  // instante, pero es la de mentira, y si la real falta hay que verlo igual.
-  const jornadaEnBase = jornadas.find((j) => j.vigente && !j.es_prueba) ?? null;
-  const faltaSincronizar = jornadaAhora !== null && jornadaEnBase === null;
 
   /*
    * ¿Está aplicada la migración de jornadas?
@@ -162,7 +157,7 @@ export default async function AdminPage() {
           </p>
         )}
 
-        {problemas.length > 0 && (
+        {problemas.length > 0 && jornadas.length === 0 && (
           <div className="aviso aviso--error">
             <strong>Calendario de sorteos:</strong> revisa las variables
             <code> CONCURSO_SORTEOS</code>, <code>CONCURSO_INICIO</code> y{" "}
@@ -188,8 +183,7 @@ export default async function AdminPage() {
             </code>{" "}
             —con <code>supabase db push</code> o pegándolo en el editor SQL— y
             recarga esta página. La migración crea las tres jornadas por su
-            cuenta; después conviene apretar «Sincronizar jornadas» para
-            comprobar que coinciden con el calendario.
+            cuenta. Después configura las ventanas reales en la pestaña Ruleta.
             {jornadasRes.error ? (
               <>
                 <br />
@@ -200,17 +194,6 @@ export default async function AdminPage() {
               </>
             ) : null}
           </div>
-        )}
-
-        {!esquemaSinJornadas && faltaSincronizar && (
-          <p className="aviso aviso--error">
-            <strong>Ninguna jornada cubre este momento en la base.</strong> El
-            calendario dice que debería estar abierta{" "}
-            <strong>{jornadaAhora?.nombre}</strong>, pero no hay una fila de
-            sorteo que la contenga, así que{" "}
-            <strong>toda inscripción se está rechazando</strong>. Aprieta
-            «Sincronizar jornadas» en el bloque de Sorteos.
-          </p>
         )}
 
         <div className="adm__rejilla">
@@ -263,8 +246,8 @@ export default async function AdminPage() {
             <h2 className="tarjeta__titulo">Por jornada</h2>
             {jornadas.length === 0 ? (
               <p className="vacio">
-                Sin jornadas cargadas. Sincronízalas desde el bloque de Sorteos:
-                mientras no existan, el formulario no puede aceptar inscripciones.
+                Sin jornadas cargadas. Aplica las migraciones y configúralas en
+                Ruleta: mientras no existan, el formulario no acepta inscripciones.
               </p>
             ) : (
               <div className="tabla-caja">
@@ -334,7 +317,20 @@ export default async function AdminPage() {
           punto, esto vuelve a ser una tabla de tres líneas.
         */}
 
-        <PanelSorteos sorteos={sorteos} />
+        <div className="tarjeta">
+          <div className="tarjeta__cabecera">
+            <div>
+              <h2 className="tarjeta__titulo">Ruleta instantánea</h2>
+              <p className="adm__bajada">
+                N manual/automático, stock diario, horarios y lista imprimible
+                de ganadores están separados del sorteo diferido anterior.
+              </p>
+            </div>
+            <Link href="/admin/ruleta" className="btn btn--primario">
+              Abrir ruleta
+            </Link>
+          </div>
+        </div>
 
         <PruebaCorreo />
       </main>

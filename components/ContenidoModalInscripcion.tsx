@@ -1,18 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Badge18 } from "./Badge18";
 import { BetanoLogo } from "./Lockup";
 import { FormularioInscripcion } from "./FormularioInscripcion";
-import { PasosPerfume, SelloConfirmado } from "./Confirmacion";
-import { InfoBadge } from "./InfoBadge";
+import { ResultadoRuleta } from "./ResultadoRuleta";
 import { AvisoPruebas } from "./AvisoPruebas";
 import { CORREO_DATOS } from "@/lib/contacto";
-import { PREMIO } from "@/lib/campana";
+import type { Confirmado } from "@/lib/confirmado";
 
 /**
- * Contenido del modal: formulario y, tras el alta, la confirmación EN SU SITIO.
+ * Contenido del modal: formulario y, tras el alta, ruleta y resultado EN SU SITIO.
  *
  * Antes el envío navegaba a /listo, así que el modal se cerraba y aparecía la
  * pantalla completa. Para quien está en escritorio eso es un salto brusco justo
@@ -20,8 +18,7 @@ import { PREMIO } from "@/lib/campana";
  * la pantalla de atrás desaparece y ya no hay relación visible entre lo que
  * hizo y lo que ve.
  *
- * La confirmación se compone con las mismas piezas que /listo, no con una copia
- * de su texto.
+ * El resultado usa la misma pieza que /listo, no una copia de su texto.
  */
 export function ContenidoModalInscripcion({
   origen,
@@ -32,47 +29,10 @@ export function ContenidoModalInscripcion({
       no puede callar lo que dice la ruta completa. */
   pruebas?: boolean;
 }) {
-  const router = useRouter();
-  const [correo, setCorreo] = useState<string | null>(null);
-  const [sorteo, setSorteo] = useState<string | undefined>(undefined);
+  const [resultado, setResultado] = useState<Confirmado | null>(null);
 
-  if (correo !== null) {
-    return (
-      <>
-        <div id="modal-titulo">
-          <SelloConfirmado email={correo} compacto />
-        </div>
-
-        {/* También en la confirmación: es la pantalla que la persona se lleva
-            como prueba de que quedó inscrita, y en un ensayo no quedó. */}
-        {pruebas && <AvisoPruebas />}
-
-        <PasosPerfume compacto />
-
-        {/* Las mismas placas que /listo: hay un sorteo por día, y quien se
-            inscribe después de las 21:00 entra al del día siguiente. Esta
-            superficie no puede callar lo que dice la otra. */}
-        <div style={estiloPlacas}>
-          <InfoBadge
-            label="Sorteo"
-            value={sorteo ?? "Fecha por definir"}
-            pending={!sorteo}
-          />
-          <InfoBadge label="Premio" value={PREMIO} />
-        </div>
-
-        <p style={estiloTexto}>
-          No revisamos tu bandeja de spam por ti. Si no llega, escríbenos a{" "}
-          <a href={`mailto:${CORREO_DATOS}`}>{CORREO_DATOS}</a>.
-        </p>
-
-        {/* back() y no push("/i"): la portada sigue montada detrás del modal,
-            así que retroceder la devuelve tal como estaba, sin recargarla. */}
-        <button type="button" onClick={() => router.back()} style={estiloBoton}>
-          Listo
-        </button>
-      </>
-    );
+  if (resultado !== null) {
+    return <ResultadoRuleta resultado={resultado} compacto />;
   }
 
   return (
@@ -99,10 +59,10 @@ export function ContenidoModalInscripcion({
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <h1 id="modal-titulo" style={estiloTitulo}>
-          Deja tus datos y entra al sorteo
+          Deja tus datos y gira la ruleta
         </h1>
         <p style={estiloTexto}>
-          Un minuto y listo. La confirmación te llega al correo.
+          El resultado es inmediato. Solo enviamos correo si ganas.
         </p>
       </div>
 
@@ -110,10 +70,7 @@ export function ContenidoModalInscripcion({
 
       <FormularioInscripcion
         origen={origen}
-        alExito={(email, jornada) => {
-          setSorteo(jornada);
-          setCorreo(email);
-        }}
+        alExito={setResultado}
       />
 
       <p style={{ ...estiloTexto, fontSize: 11.5 }}>
@@ -143,30 +100,9 @@ const estiloTitulo: React.CSSProperties = {
   color: "#FFFFFF",
 };
 
-/* Dos columnas iguales, como en /listo: las dos placas son del mismo rango. */
-const estiloPlacas: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr",
-  gap: 8,
-};
-
 const estiloTexto: React.CSSProperties = {
   margin: 0,
   fontSize: 13.5,
   lineHeight: 1.55,
   color: "rgba(255,255,255,.8)",
-};
-
-const estiloBoton: React.CSSProperties = {
-  height: 52,
-  background: "var(--cta-fondo, var(--color-ink))",
-  color: "var(--cta-texto, var(--color-bone))",
-  border: "none",
-  borderRadius: 4,
-  fontFamily: "var(--font-title)",
-  fontWeight: 800,
-  fontSize: 14,
-  letterSpacing: ".16em",
-  textTransform: "uppercase",
-  cursor: "pointer",
 };

@@ -15,7 +15,7 @@ import {
   type InscripcionErrors,
   type InscripcionValues,
 } from "@/lib/inscripcion";
-import { guardaConfirmado } from "@/lib/confirmado";
+import { guardaConfirmado, type Confirmado } from "@/lib/confirmado";
 import { CORREO_DATOS } from "@/lib/contacto";
 
 const CAMPOS_TEXTO: CampoTexto[] = ["nombre", "email", "tel", "rut"];
@@ -73,13 +73,12 @@ export function FormularioInscripcion({
   origen: string;
   /**
    * Si viene, se llama en vez de navegar a /listo. Es lo que permite que el
-   * modal de escritorio cambie a "quedaste dentro" en su sitio: navegar cerraba
+   * modal de escritorio cambie a la ruleta en su sitio: navegar cerraba
    * el modal y mandaba a la pantalla completa, que es exactamente lo que un
    * modal existe para evitar.
    */
-  /** Recibe además la etiqueta del sorteo, para que la confirmación del modal
-      pueda decir lo mismo que /listo y no solo el correo. */
-  alExito?: (email: string, sorteo?: string) => void;
+  /** Lleva al modal la misma decisión persistida que recibe /listo. */
+  alExito?: (resultado: Confirmado) => void;
 }) {
   const router = useRouter();
   // El borrador solo trae campos de texto; el consentimiento parte siempre en
@@ -95,6 +94,9 @@ export function FormularioInscripcion({
 
   const pendiente = useRef<InscripcionValues | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Se conserva entre reintentos de red: si la base alcanzó a resolver antes
+  // de que se cortara la respuesta, el segundo POST recupera la misma ruleta.
+  const requestId = useRef<string | null>(null);
 
   const guardaYa = useCallback(() => {
     if (timer.current !== null) {
@@ -130,7 +132,7 @@ export function FormularioInscripcion({
   // /listo no se alcanza con <Link>, así que sin prefetch su payload RSC se
   // descargaba recién al enviar, sobre la red del mall.
   //
-  // Pero desde el modal /listo ya no se visita: la confirmación se muestra en su
+  // Pero desde el modal /listo ya no se visita: el resultado se muestra en su
   // sitio. Ahí el prefetch era una descarga a fondo perdido compitiendo por el
   // ancho de banda justo mientras el modal intentaba cargar.
   useEffect(() => {
@@ -162,6 +164,9 @@ export function FormularioInscripcion({
   ) {
     const siguiente = { ...v, [k]: val };
     setV(siguiente);
+    // Una edición después de un fallo ya es un intento distinto. Durante el
+    // POST el fieldset está deshabilitado, por lo que no se pierde idempotencia.
+    requestId.current = null;
     // El consentimiento nunca se persiste (ver lib/inscripcion.ts).
     pendiente.current = siguiente;
     if (timer.current !== null) clearTimeout(timer.current);
@@ -184,6 +189,7 @@ export function FormularioInscripcion({
     setE({});
     setFalla(null);
     setEnviando(true);
+    requestId.current ??= crypto.randomUUID();
 
     try {
       const r = await fetch("/api/inscripcion", {
@@ -200,6 +206,7 @@ export function FormularioInscripcion({
           edad: v.edad,
           bases: v.bases,
           mkt: v.mkt,
+          request_id: requestId.current,
         }),
       });
 
@@ -214,20 +221,33 @@ export function FormularioInscripcion({
         const cuerpo = (await r.json().catch(() => ({}))) as {
           sorteo?: unknown;
           pruebas?: unknown;
+          ganador?: unknown;
+          numero_ganador?: unknown;
         };
         const sorteo = typeof cuerpo.sorteo === "string" ? cuerpo.sorteo : undefined;
         const pruebas = cuerpo.pruebas === true;
-        // Se guarda igual aunque no naveguemos: si después abre /listo por
-        // historial o por el enlace de otro dispositivo, la pantalla tiene que
-        // poder decirle a qué correo se mandó la confirmación.
-        guardaConfirmado({ email: correo, origen, sorteo, pruebas });
+        const ganador = cuerpo.ganador === true;
+        const numeroGanador =
+          typeof cuerpo.numero_ganador === "number" &&
+          Number.isInteger(cuerpo.numero_ganador)
+            ? cuerpo.numero_ganador
+            : undefined;
+        const confirmado: Confirmado = {
+          email: correo,
+          origen,
+          sorteo,
+          pruebas,
+          ganador,
+          numeroGanador,
+        };
+        guardaConfirmado(confirmado);
         pendiente.current = null;
         borraDraft();
         // Sin apagar `enviando`: tanto la navegación como el cambio de
         // contenido del modal desmontan este componente, y reactivar el botón
         // acá solo abre una ventana para un segundo submit.
         if (alExito) {
-          alExito(correo, sorteo);
+          alExito(confirmado);
           return;
         }
         router.push("/listo");
@@ -456,7 +476,11 @@ export function FormularioInscripcion({
             opacity: enviando ? 0.7 : 1,
           }}
         >
-          {enviando ? "Inscribiendo…" : falla ? "Reintentar" : "Confía y dale"}
+          {enviando
+            ? "Preparando ruleta…"
+            : falla
+              ? "Reintentar"
+              : "Inscribirme y girar"}
         </button>
 
         <p

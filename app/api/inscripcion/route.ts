@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { supabasePublico } from "@/lib/supabase/publico";
-import { diaSorteo, jornadaDe } from "@/lib/concurso";
+import { diaSorteo } from "@/lib/concurso";
 import { estadoVigente } from "@/lib/concurso-servidor";
 import { normalizaTelefono, valida } from "@/lib/inscripcion";
 import {
@@ -21,16 +21,15 @@ export const dynamic = "force-dynamic";
  * Toda validación del cliente se repite acá (regla dura 3): el formulario es
  * evadible con una consola abierta, y esta ruta es la única frontera real.
  *
- * No envía correo. Encolar es responsabilidad de la RPC, y el envío lo hace el
- * cron: si Resend tarda 800 ms, la persona en el mall espera 800 ms de más, y
- * si Resend falla se perdería la inscripción entera por un correo que se podía
- * reintentar (regla dura 8).
+ * No envía correo. La RPC solo encola el respaldo si el resultado es ganador,
+ * y el cron lo manda después. Inscripción, bloque, stock, folio y outbox quedan
+ * en una única transacción de PostgreSQL.
  */
 export async function POST(request: NextRequest) {
   // Se comprueba acá y no solo en la página: quien tenga el formulario abierto
   // desde antes del cierre —o desde antes de que alguien lo cierre a mano—
   // puede enviarlo igual.
-  const { estado, pruebas } = await estadoVigente(new Date(), { fresco: true });
+  const { estado } = await estadoVigente(new Date(), { fresco: true });
   if (estado !== "abierto") {
     return NextResponse.json({ error: "cerrado" }, { status: 409 });
   }
@@ -82,7 +81,9 @@ export async function POST(request: NextRequest) {
    */
   const origen = origenDe(request);
 
-  const { data, error } = await supabase.rpc("crear_inscripcion", {
+  const requestId = uuid(datos.request_id) ?? crypto.randomUUID();
+
+  const { data, error } = await supabase.rpc("crear_inscripcion_ruleta", {
     p_nombre: valores.nombre,
     p_email: valores.email,
     p_telefono: normalizaTelefono(valores.tel),
@@ -91,37 +92,44 @@ export async function POST(request: NextRequest) {
     p_acepta_bases: valores.bases,
     p_acepta_marketing: valores.mkt,
     p_origen: origen,
+    p_request_id: requestId,
   });
 
   if (error) {
-    console.error("crear_inscripcion falló:", error.message);
+    console.error("crear_inscripcion_ruleta falló:", error.message);
     return NextResponse.json({ error: "servidor" }, { status: 502 });
   }
 
-  // La RPC devuelve una fila: { resultado, inscripcion_id }.
+  // La RPC devuelve la decisión persistida. Si el navegador reintenta el mismo
+  // request_id por un timeout, recibe exactamente este resultado otra vez.
   const fila = Array.isArray(data) ? data[0] : data;
   const resultado = fila?.resultado as string | undefined;
 
   switch (resultado) {
     case "creada": {
-      /*
-       * A qué sorteo entró, para que la confirmación lo diga. La jornada la
-       * asignó la base contra su propia ventana; acá se formatea la etiqueta con
-       * el calendario del entorno, que es la misma fuente con la que se cargaron
-       * esas ventanas. Si los dos dejaran de coincidir, el panel lo avisa: no
-       * vale la pena una consulta más en el camino crítico del alta.
-       */
-      const jornada = jornadaDe(new Date());
+      const sorteoAt = fecha(fila?.sorteo_at);
+      const ganador = fila?.ganador === true;
+      const pruebas = fila?.es_prueba === true;
+      const numeroGanador =
+        typeof fila?.numero_ganador === "number" &&
+        Number.isInteger(fila.numero_ganador) &&
+        fila.numero_ganador >= 1 &&
+        fila.numero_ganador <= 90
+          ? fila.numero_ganador
+          : null;
+      if (ganador && !pruebas && numeroGanador === null) {
+        console.error(
+          "crear_inscripcion_ruleta devolvió ganador real sin folio:",
+          fila?.inscripcion_id,
+        );
+        return NextResponse.json({ error: "servidor" }, { status: 502 });
+      }
       return NextResponse.json(
         {
           ok: true,
-          sorteo: jornada ? diaSorteo(jornada.sorteoAt) : null,
-          /*
-           * Si el alta fue un ensayo. Viaja en la respuesta y no lo consulta la
-           * pantalla de confirmación por su cuenta: para cuando esa pantalla se
-           * pinta, el modo pruebas puede haberse apagado ya, y entonces le diría
-           * «quedaste dentro» a una fila que se va a borrar.
-           */
+          ganador,
+          numero_ganador: numeroGanador,
+          sorteo: sorteoAt ? diaSorteo(sorteoAt) : null,
           pruebas,
         },
         { status: 201 },
@@ -146,7 +154,7 @@ export async function POST(request: NextRequest) {
        * funcionar, y el detalle accionable va al log del servidor.
        */
       console.error(
-        "crear_inscripcion devolvió sin_jornada: ninguna ventana de `sorteos` cubre este instante. Sincroniza las jornadas desde /admin.",
+        "crear_inscripcion_ruleta devolvió sin_jornada: ninguna ventana instantánea de `sorteos` cubre este instante. Revisa /admin/ruleta.",
       );
       return NextResponse.json({ error: "sin_jornada" }, { status: 503 });
     case "vetado":
@@ -154,13 +162,31 @@ export async function POST(request: NextRequest) {
       // le explica a quien lo intenta, pero se le da una vía para reclamar.
       return NextResponse.json({ error: "vetado" }, { status: 403 });
     default:
-      console.error("crear_inscripcion devolvió algo inesperado:", resultado);
+      console.error(
+        "crear_inscripcion_ruleta devolvió algo inesperado:",
+        resultado,
+      );
       return NextResponse.json({ error: "servidor" }, { status: 502 });
   }
 }
 
 function texto(v: unknown): string {
   return typeof v === "string" ? v : "";
+}
+
+function uuid(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    v,
+  )
+    ? v
+    : null;
+}
+
+function fecha(v: unknown): Date | null {
+  if (typeof v !== "string") return null;
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d;
 }
 
 /** Header primero, cookie después: el header lleva el ?p= de la petición que

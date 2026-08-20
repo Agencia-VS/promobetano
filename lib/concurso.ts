@@ -396,9 +396,10 @@ export function estadoEfectivo(
 export function textoCierre(
   estado: EstadoConcurso,
   fuente: FuenteEstado,
+  ventana?: { desde?: Date | null; hasta?: Date | null },
 ): { titulo: string; detalle: string } {
-  const desde = inicio();
-  const hasta = cierre();
+  const desde = ventana?.desde ?? inicio();
+  const hasta = ventana?.hasta ?? cierre();
 
   if (estado === "antes") {
     return {

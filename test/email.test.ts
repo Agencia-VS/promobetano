@@ -24,10 +24,9 @@ function conDominio<T>(valor: string | undefined, fn: () => T): T {
   }
 }
 
-test("los dos tipos que encola la base renderizan", () => {
-  // Si un tipo faltara, esa persona no recibiría nada: la cola inserta
-  // 'confirmacion' desde crear_inscripcion y 'ganador' desde
-  // encolar_correos_ganadores, y el cron llama a plantilla() con lo que venga.
+test("los dos tipos compatibles con la cola renderizan", () => {
+  // `confirmacion` se conserva para filas históricas aunque el hotfix ya no la
+  // encola. El cron todavía debe poder drenar una fila antigua sin romperse.
   for (const tipo of TIPOS) {
     const p = plantilla(tipo, "Ana María Pérez");
     assert.ok(p.asunto.length > 0, `${tipo}: sin asunto`);
@@ -126,24 +125,24 @@ test("VERCEL_PROJECT_PRODUCTION_URL sirve de respaldo", () => {
   }
 });
 
-test("el correo de ganador dice lo que el equipo prometió y nada más", () => {
-  const { asunto, html, texto } = plantilla("ganador", "Ana Pérez");
-  // «Confiaste y ganaste», no «felicidades»: amarra con el nombre de la
-  // fragancia y con el CTA del sitio. «Felicidades» lo firma cualquier marca.
-  assert.match(asunto, /confiaste y ganaste/i);
-  assert.match(html, /¡Confiaste/);
-  assert.ok(!/felicidades/i.test(html), "volvió el «felicidades» genérico");
-  assert.match(html, /el equipo se contactará contigo/i);
-  assert.match(texto, /gestionar la entrega de los premios/i);
-
-  // Decisiones 03 y 04 abiertas: no se puede nombrar premio, plazo ni forma de
-  // entrega en una pieza con efectos legales.
-  for (const inventado of [/\d+\s*(días|horas)/i, /plazo de/i, /retira/i, /canje/i]) {
-    assert.ok(!inventado.test(texto), `promete algo no decidido: ${inventado}`);
-  }
+test("el correo de ganador es un respaldo simple con su folio", () => {
+  const { asunto, html, texto } = plantilla(
+    "ganador",
+    "Ana Pérez",
+    null,
+    7,
+  );
+  assert.match(asunto, /ganaste/i);
+  assert.match(html, /¡Ganaste!/);
+  assert.match(html, /acércate a la mesa de premiación/i);
+  assert.match(texto, /acércate a la mesa de premiación/i);
+  assert.match(html, /Número de ganador/);
+  assert.match(html, /#007/);
+  assert.match(texto, /Número de ganador: #007/);
+  assert.doesNotMatch(html, /el equipo se contactará contigo/i);
 });
 
-test("los pasos del perfume hablan en el tiempo que corresponde", () => {
+test("la confirmación conserva los pasos y el respaldo de ganador es breve", () => {
   // En la confirmación todavía no se ganó nada: «si te lo ganas». En el correo
   // de ganador el premio ya es de la persona: «te lo ganaste». Mezclarlos es
   // el error de copy que esta campaña no puede permitirse en una pieza legal.
@@ -152,10 +151,10 @@ test("los pasos del perfume hablan en el tiempo que corresponde", () => {
   assert.match(conf.texto, /Si te lo ganas, así se usa/);
   assert.doesNotMatch(conf.html, /Te lo ganaste/);
 
-  const gan = plantilla("ganador", "Ana");
-  assert.match(gan.html, /Te lo ganaste, así se usa/);
-  assert.match(gan.texto, /Te lo ganaste, así se usa/);
-  assert.doesNotMatch(gan.html, /Si te lo ganas/);
+  const gan = plantilla("ganador", "Ana", null, 1);
+  assert.doesNotMatch(gan.html, /así se usa/);
+  assert.doesNotMatch(gan.texto, /Abre la botella/);
+  assert.match(gan.texto, /#001/);
 });
 
 test("la confirmación dice que nos comunicaremos solo si gana", () => {

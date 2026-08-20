@@ -19,9 +19,7 @@ export const PREMIO = "Perfume Eau de Confianza";
 /**
  * Dónde está la activación: los paneles con el QR.
  *
- * Es la sede del stand, NO el lugar del sorteo ni de la entrega del premio. Esa
- * distinción importa: nombrar esta sede en el correo de ganador sería prometer
- * una entrega presencial acá, que no es lo que dicen las bases (§6: forma y
- * lugar se coordinan con cada ganador por correo).
+ * Es la sede del stand y de la mesa de premiación. Se mantiene como constante
+ * de campaña; el folio, no el texto de esta constante, es la prueba de entrega.
  */
 export const SEDE = "Costanera Center";

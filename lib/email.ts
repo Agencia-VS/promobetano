@@ -237,6 +237,7 @@ export function plantilla(
   tipo: TipoCorreo,
   nombre: string,
   sorteoAt?: Date | null,
+  numeroGanador?: number | null,
 ): Plantilla {
   const quien = escapaHtml(primerNombre(nombre));
   const quienTexto = primerNombre(nombre);
@@ -266,7 +267,7 @@ ${PIE_TEXTO}`,
     };
   }
 
-  return ganaste(quien, quienTexto);
+  return ganaste(quien, quienTexto, numeroGanador);
 }
 
 /**
@@ -278,34 +279,39 @@ ${PIE_TEXTO}`,
  * lugar de como campo de color. Es lo que hace que el correo se sienta distinto
  * al abrirlo sin necesitar una segunda maqueta.
  *
- * «Confiaste y ganaste» y no «felicidades»: amarra con el nombre de la
- * fragancia, con el CTA del sitio y con las instrucciones de la carta.
- * «Felicidades» lo podría firmar cualquier marca.
- *
- * No se nombra el premio, ni un plazo, ni una forma de entrega: las decisiones
- * 03 y 04 del brief siguen abiertas. El correo dice lo único que se sabe con
- * certeza, que es que el equipo va a contactar.
- *
- * No sale solo: lo encola a mano el equipo desde el panel, con el botón del
- * sorteo ejecutado. El suplente que sube por un declinado recibe ESTA misma
- * pieza —el cupo ya es suyo— la próxima vez que se tire el batch de esa
- * jornada.
+ * Es deliberadamente breve: la prueba principal es la pantalla física y este
+ * mensaje es solo el respaldo. El folio tiene que coincidir con la lista
+ * impresa 1..90.
  */
-function ganaste(quien: string, quienTexto: string): Plantilla {
+function ganaste(
+  quien: string,
+  quienTexto: string,
+  numeroGanador?: number | null,
+): Plantilla {
+  const folio =
+    typeof numeroGanador === "number" && Number.isInteger(numeroGanador)
+      ? `#${String(numeroGanador).padStart(3, "0")}`
+      : null;
+  const bloqueFolio = folio
+    ? `<div style="margin:24px 0 4px;padding:18px 20px;background:${MARCA.bone};color:${MARCA.ink};border-radius:4px;">
+<span style="display:block;margin-bottom:5px;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;">Número de ganador</span>
+<strong style="font-size:38px;line-height:1;letter-spacing:.08em;">${folio}</strong>
+</div>`
+    : "";
+  const lineaFolio = folio ? `\nNúmero de ganador: ${folio}.` : "";
+
   return {
-    asunto: "¡Confiaste y ganaste! — Eau de Confianza",
+    asunto: "¡Ganaste! — Eau de Confianza",
     html: pieza(
-      "Saliste sorteado. El equipo se contactará contigo para la entrega.",
-      `${antetitulo("Saliste sorteado")}
-${titular("¡Confiaste <br>y ganaste!", MARCA.confianza)}
-<p style="margin:18px 0 28px;font-size:16px;line-height:1.65;color:${CUERPO};">${quien}, el equipo se contactará contigo para gestionar la entrega de los premios.</p>
-${pasosHtml("Te lo ganaste, así se usa")}`,
+      `¡Ganaste! Acércate a la mesa de premiación.${folio ? ` Tu número es ${folio}.` : ""}`,
+      `${antetitulo("Resultado confirmado")}
+${titular("¡Ganaste!", MARCA.confianza)}
+<p style="margin:18px 0 0;font-size:16px;line-height:1.65;color:${CUERPO};">${quien}, acércate a la mesa de premiación y muestra tu pantalla de ganador.</p>
+${bloqueFolio}`,
     ),
-    texto: `¡Confiaste y ganaste!
+    texto: `¡Ganaste!
 
-Saliste sorteado. ${quienTexto}, el equipo se contactará contigo para gestionar la entrega de los premios.
-
-${pasosTexto("Te lo ganaste, así se usa")}
+${quienTexto}, acércate a la mesa de premiación y muestra tu pantalla de ganador.${lineaFolio}
 
 ${PIE_TEXTO}`,
   };

@@ -28,10 +28,14 @@ export const dynamic = "force-dynamic";
 export default async function InscripcionPage() {
   const h = await headers();
   const origen = h.get(HEADER_ORIGEN) ?? ORIGEN_DIRECTO;
-  const { estado, fuente, pruebas } = await estadoVigente();
+  const { estado, fuente, pruebas, ventanaDesde, ventanaHasta } =
+    await estadoVigente();
 
   if (estado !== "abierto") {
-    const { titulo, detalle } = textoCierre(estado, fuente);
+    const { titulo, detalle } = textoCierre(estado, fuente, {
+      desde: ventanaDesde,
+      hasta: ventanaHasta,
+    });
     return (
       // Variante "listo" y no "formulario": esta pantalla es un mensaje corto y
       // el layout del formulario alinea arriba porque asume una columna alta.
@@ -118,7 +122,7 @@ export default async function InscripcionPage() {
                 color: "#FFFFFF",
               }}
             >
-              Deja tus datos y entra al sorteo
+              Deja tus datos y gira la ruleta
             </h1>
             <p
               style={{
@@ -129,7 +133,7 @@ export default async function InscripcionPage() {
                 maxWidth: "36ch",
               }}
             >
-              Un minuto y listo. La confirmación te llega al correo.
+              El resultado es inmediato. Solo enviamos correo si ganas.
             </p>
 
             {/* Va con el titular y no junto al botón: quien llega tiene que

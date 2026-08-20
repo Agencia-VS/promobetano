@@ -8,6 +8,10 @@ const KEY = "edc_confirmado";
 export type Confirmado = {
   email: string;
   origen: string;
+  /** Decisión definitiva tomada por la base al crear la inscripción. */
+  ganador: boolean;
+  /** Folio global 1..90. En un ensayo ganador se omite para no gastar stock. */
+  numeroGanador?: number;
   /**
    * Etiqueta del sorteo al que entró («hoy a las 21:00»), tal como la devolvió
    * el alta. Opcional a propósito: un payload guardado por una versión anterior
@@ -39,6 +43,12 @@ function esConfirmado(x: unknown): x is Confirmado {
   return (
     typeof d.email === "string" &&
     typeof d.origen === "string" &&
+    typeof d.ganador === "boolean" &&
+    (d.numeroGanador === undefined ||
+      (typeof d.numeroGanador === "number" &&
+        Number.isInteger(d.numeroGanador) &&
+        d.numeroGanador >= 1 &&
+        d.numeroGanador <= 90)) &&
     // `sorteo` es opcional, pero si viene tiene que ser texto: sin este guard un
     // valor raro se interpolaría en JSX y crashearía /listo, que es el defecto
     // que ya ocurrió una vez con `email`.

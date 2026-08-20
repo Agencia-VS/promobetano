@@ -24,10 +24,14 @@ export const dynamic = "force-dynamic";
 export default async function ModalInscripcionPage() {
   const h = await headers();
   const origen = h.get(HEADER_ORIGEN) ?? ORIGEN_DIRECTO;
-  const { estado, fuente, pruebas } = await estadoVigente();
+  const { estado, fuente, pruebas, ventanaDesde, ventanaHasta } =
+    await estadoVigente();
 
   if (estado !== "abierto") {
-    const { titulo, detalle } = textoCierre(estado, fuente);
+    const { titulo, detalle } = textoCierre(estado, fuente, {
+      desde: ventanaDesde,
+      hasta: ventanaHasta,
+    });
     return (
       <>
         <h1 id="modal-titulo" style={estiloTitulo}>

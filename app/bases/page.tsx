@@ -2,15 +2,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { Badge18 } from "@/components/Badge18";
 import { CORREO_DATOS } from "@/lib/contacto";
-import {
-  cierre,
-  fechaSorteo,
-  fechaYHora,
-  inicio,
-  jornadas,
-  nGanadores,
-  nSuplentes,
-} from "@/lib/concurso";
+import { fechaYHora, jornadas } from "@/lib/concurso";
+import { supabasePublico } from "@/lib/supabase/publico";
 
 export const metadata: Metadata = {
   title: "Bases y condiciones — Eau de Confianza",
@@ -37,12 +30,11 @@ export const metadata: Metadata = {
  *    requisito de participación: es una condición de la comunicación misma,
  *    y por eso tiene su propia sección.
  *
- * ── Criterios elegidos el 19 ago 2026, por instrucción del cliente ──────────
+ * ── Criterios actualizados el 20 ago 2026 ───────────────────────────────────
  *
- * Al confirmarse las decisiones 02 y 03 —tres sorteos diarios, 30 ganadores y 10
- * suplentes cada uno, un premio por persona— hubo que cerrar las cláusulas que
- * quedaban abiertas. El cliente pidió redactarlas y publicar. Lo que se decidió,
- * para que la próxima sesión no lo tenga que deducir del texto:
+ * El cliente reemplazó el sorteo diferido por una ruleta instantánea con hasta
+ * 30 premios diarios, 90 globales y un premio por persona. Se mantienen acá las
+ * decisiones que afectan la redacción legal:
  *
  *   · Betano es la MARCA de la campaña, no un destinatario de los datos. El
  *     Organizador es el único responsable, también para las comunicaciones
@@ -52,10 +44,8 @@ export const metadata: Metadata = {
  *     cónyuge/conviviente y parientes hasta segundo grado. Es el estándar.
  *   · Premio: un frasco del perfume de la campaña por ganador. NO se declara un
  *     valor en pesos: no es exigible y un número inventado sí lo sería en contra.
- *   · Entrega: coordinada por correo, 30 días corridos, con cédula. No hay canje
- *     presencial ni código único, que es lo que el código efectivamente hace.
- *   · Aceptación del premio: 5 días corridos. El concurso anterior daba 2, que con
- *     contacto solo por correo deja premios sin entregar por no revisar la bandeja.
+ *   · Entrega: inmediata en la mesa, mostrando una pantalla con folio correlativo.
+ *     El correo de ganador es solo un respaldo.
  *   · Conservación: 12 meses para el sorteo, 24 para marketing. Plazos relativos y
  *     no fechas fijas, para que no queden desfasados si la activación se mueve.
  *   · Respuesta a solicitudes ARCO+: 30 días corridos.
@@ -68,9 +58,8 @@ export const metadata: Metadata = {
  * RFC 2606 no hay a quién escribirle para ejercer los derechos de la §12.
  */
 
-// Las fechas salen de las variables de entorno, igual que el resto del sitio:
-// si el cierre se mueve en Vercel, las bases publicadas se mueven con él y no
-// quedan contradiciendo al formulario.
+// Las fechas salen primero de la configuración administrable de la base. Las
+// variables de entorno son solo el respaldo durante un despliegue incompleto.
 export const dynamic = "force-dynamic";
 
 /**
@@ -83,14 +72,32 @@ function enumera(partes: string[]): string {
   return `${partes.slice(0, -1).join(", ")} y ${partes[partes.length - 1]}`;
 }
 
-export default function BasesPage() {
-  const desde = inicio();
-  const hasta = cierre();
-  // Vacío si el calendario no está cargado: entonces las cláusulas remiten a «las
-  // fechas informadas en los canales de la Activación» en vez de afirmar unas que
-  // no existen. No es un modo degradado esperable —el panel avisa en rojo si pasa—
-  // pero el documento tiene que seguir siendo legible y verdadero.
-  const sorteos = jornadas();
+function fecha(valor: string | undefined): Date | null {
+  if (!valor) return null;
+  const d = new Date(valor);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+export default async function BasesPage() {
+  const supabase = supabasePublico();
+  const { data } = supabase
+    ? await supabase.rpc("listar_jornadas_ruleta_publico")
+    : { data: null };
+  const configuradas = (data ?? []) as Array<{
+    nombre: string;
+    ventana_desde: string;
+    ventana_hasta: string;
+    limite_diario: number;
+  }>;
+  const respaldo = jornadas().map((j) => ({
+    nombre: j.nombre,
+    ventana_desde: j.desde.toISOString(),
+    ventana_hasta: j.sorteoAt.toISOString(),
+    limite_diario: 30,
+  }));
+  const sorteos = configuradas.length > 0 ? configuradas : respaldo;
+  const desde = fecha(sorteos[0]?.ventana_desde);
+  const hasta = fecha(sorteos.at(-1)?.ventana_hasta);
 
   return (
     <main
@@ -161,9 +168,10 @@ export default function BasesPage() {
       <Seccion titulo="2. En qué consiste la Activación">
         La Activación se difunde mediante códigos QR ubicados en paneles
         publicitarios. Al escanearlo, la persona accede a un formulario de
-        inscripción; completándolo, queda incorporada al sorteo descrito en la
-        sección 5. La participación es gratuita y no requiere compra ni
-        contratación de ningún producto ni servicio.
+        inscripción. Al completarlo, una ruleta muestra inmediatamente si la
+        persona ganó el premio descrito en la sección 6. La participación es
+        gratuita y no requiere compra ni contratación de ningún producto ni
+        servicio.
       </Seccion>
 
       <Seccion titulo="3. Quién puede participar">
@@ -203,9 +211,9 @@ export default function BasesPage() {
         <br />
         <br />
         Cada persona puede inscribirse{" "}
-        <strong>una sola vez por cada sorteo diario</strong>, y por lo tanto hasta{" "}
+        <strong>una sola vez por cada jornada diaria</strong>, y por lo tanto hasta{" "}
         {sorteos.length || 3} veces durante todo el período. La unicidad se
-        determina, dentro de cada sorteo, por RUT y por correo electrónico en su
+        determina, dentro de cada jornada, por RUT y por correo electrónico en su
         forma normalizada, de modo que las variantes de escritura del mismo dato
         —puntos, guiones, ceros a la izquierda, mayúsculas— se reconocen como una
         única inscripción. Las inscripciones duplicadas o con datos falsos se
@@ -214,47 +222,54 @@ export default function BasesPage() {
         <br />
         Sin perjuicio de lo anterior, cada persona puede resultar{" "}
         <strong>ganadora una sola vez</strong> durante todo el período: quien ya
-        tenga un premio asignado queda excluido de los sorteos posteriores, aunque
-        se haya inscrito en ellos.
+        tenga un premio asignado queda excluido de asignaciones posteriores,
+        aunque se haya inscrito nuevamente.
       </Seccion>
 
-      <Seccion titulo="5. Sorteo, ganadores y suplentes">
-        El Organizador realiza <strong>un sorteo por cada día</strong> del
-        período, entre las inscripciones válidas recibidas en la jornada que
-        cierra en ese mismo momento. Una inscripción participa únicamente en el
-        sorteo de su propia jornada y no en los siguientes: quien se inscriba
-        después de la hora de un sorteo participa en el del día siguiente. Cada
-        sorteo es{" "}
-        <strong>aleatorio, reproducible y auditable</strong>. El procedimiento usa una{" "}
-        <strong>semilla registrada antes de ejecutarse</strong>: el orden de los
-        participantes se deriva de esa semilla mediante una función
-        determinista, y la lista completa de participantes queda congelada en el
-        momento de la ejecución. Con ambos elementos, el resultado puede
-        recalcularse y verificarse íntegramente con posterioridad.
+      <Seccion titulo="5. Ruleta instantánea y asignación de ganadores">
+        Cada inscripción válida recibe un resultado inmediato. Las
+        participaciones de cada jornada se agrupan en bloques de tamaño{" "}
+        <strong>N</strong>, y el sistema elige aleatoriamente una posición
+        ganadora dentro de cada bloque. El valor N puede ajustarse según el ritmo
+        observado para procurar distribuir los premios durante el horario de la
+        jornada. Una vez abierto un bloque, su tamaño y su posición ganadora no
+        cambian; cualquier ajuste se aplica al bloque siguiente.
         <br />
         <br />
         {sorteos.length > 0 ? (
           <>
-            Los sorteos se realizan{" "}
+            Las jornadas operan{" "}
             <strong>
-              {enumera(sorteos.map((j) => `el ${fechaSorteo(j.sorteoAt)}`))}
+              {enumera(
+                sorteos.map((j) => {
+                  const apertura = fecha(j.ventana_desde);
+                  const cierre = fecha(j.ventana_hasta);
+                  return apertura && cierre
+                    ? "desde el " +
+                        fechaYHora(apertura) +
+                        " hasta el " +
+                        fechaYHora(cierre)
+                    : j.nombre;
+                }),
+              )}
             </strong>
-            . En cada uno se sortean <strong>{nGanadores()}</strong> ganadores y{" "}
-            <strong>{nSuplentes()}</strong> suplentes, según el orden resultante.
+            . En cada jornada se asignan como máximo{" "}
+            <strong>{sorteos[0]?.limite_diario ?? 30} premios</strong>.
           </>
         ) : (
           <>
-            Cada sorteo se realiza al cierre de su jornada, en las fechas y horas
-            informadas en los canales de la Activación, y en cada uno se sortean{" "}
-            <strong>{nGanadores()}</strong> ganadores y{" "}
-            <strong>{nSuplentes()}</strong> suplentes, según el orden resultante.
+            Las jornadas funcionan en las fechas y horas informadas en los
+            canales de la Activación, con un máximo de{" "}
+            <strong>30 premios por jornada</strong>.
           </>
         )}
         <br />
         <br />
-        Quedan fuera del sorteo las inscripciones dadas de baja por
-        incumplimiento de estas bases y aquellas cuyo correo electrónico resultó
-        inválido o rebotó, por cuanto no permitirían notificar el premio.
+        El máximo de la Activación es de <strong>90 premios</strong>. Si una
+        jornada termina sin asignar sus 30 premios, el saldo no se traslada a
+        otra jornada y el total final puede ser inferior a 90. Quedan fuera de
+        la asignación las inscripciones dadas de baja por incumplimiento de estas
+        bases y quienes ya hayan ganado durante la Activación.
       </Seccion>
 
       <Seccion titulo="6. Premio">
@@ -268,12 +283,10 @@ export default function BasesPage() {
         a la sección 4.
         <br />
         <br />
-        La forma y el lugar de entrega se coordinan con cada ganador por correo
-        electrónico, una vez aceptado el premio. La entrega se realiza dentro de
-        los <strong>30 días corridos</strong> siguientes a la aceptación y exige
-        la presentación de la cédula de identidad vigente del ganador. Si el
-        ganador no puede concurrir personalmente, puede designar a un tercero
-        mediante poder simple, acompañando copia de su cédula de identidad.
+        La entrega se realiza en la mesa de premiación de la Activación. La
+        persona ganadora debe acercarse y mostrar la pantalla de éxito con su{" "}
+        <strong>número de ganador único</strong>. El personal registra la entrega
+        marcando ese número en la lista impresa de control.
         <br />
         <br />
         Si por causas ajenas al Organizador el premio dejara de estar disponible,
@@ -282,17 +295,14 @@ export default function BasesPage() {
       </Seccion>
 
       <Seccion titulo="7. Notificación a los ganadores">
-        Los ganadores son contactados al correo electrónico registrado en su
-        inscripción. Disponen de un plazo de{" "}
-        <strong>5 días corridos</strong> desde el envío del correo para confirmar
-        la aceptación del premio. Transcurrido ese plazo sin respuesta, se entiende
-        que el ganador renuncia y el premio pasa al siguiente suplente según el
-        orden del sorteo.
+        La pantalla mostrada al terminar la ruleta es la notificación principal.
+        Solo a quienes resulten ganadores se les envía además un correo simple de
+        respaldo al correo registrado, indicando que deben acercarse a la mesa de
+        premiación y mostrando el mismo número de ganador.
         <br />
         <br />
-        Cada reemplazo queda registrado con indicación de quién declinó, quién
-        lo sustituye y en qué momento, de manera que la trazabilidad del
-        resultado se conserve completa.
+        El número es correlativo entre 1 y 90 durante toda la Activación y queda
+        vinculado a la inscripción para mantener la trazabilidad del resultado.
       </Seccion>
 
       <Seccion titulo="8. Datos que tratamos y con qué finalidad">
@@ -305,8 +315,8 @@ export default function BasesPage() {
         <br />
         <br />
         <strong>Finalidad de esta primera autorización:</strong> administrar la
-        Activación —validar la inscripción, verificar la unicidad, ejecutar el
-        sorteo, notificar a los ganadores y gestionar la entrega del premio—. La
+        Activación —validar la inscripción, verificar la unicidad, resolver la
+        ruleta, notificar a los ganadores y gestionar la entrega del premio—. La
         base de licitud es el consentimiento otorgado al aceptar estas bases.
       </Seccion>
 
