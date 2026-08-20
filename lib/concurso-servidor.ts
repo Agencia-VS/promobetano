@@ -1,6 +1,11 @@
 import { unstable_cache } from "next/cache";
 import { supabasePublico } from "./supabase/publico.ts";
-import { estadoEfectivo, jornadaDe, type EstadoEfectivo } from "./concurso.ts";
+import {
+  cierre,
+  estadoEfectivo,
+  inicio,
+  type EstadoEfectivo,
+} from "./concurso.ts";
 
 /**
  * Estado vigente del concurso, leyendo el interruptor manual de la base.
@@ -26,33 +31,56 @@ export const TAG_INTERRUPTOR = "interruptor-inscripciones";
  * con un ensayo pondría el aviso de «esto no participa» sobre inscripciones que
  * sí participan. Son dos hechos distintos y viajan como dos campos.
  *
- * Tampoco es el interruptor de ensayo a secas: es «un alta hecha AHORA sería de
- * ensayo». La diferencia aparece si nadie aprieta «Cerrar pruebas» y llega la
- * hora de la primera jornada real: el modo seguiría encendido en la base, y el
- * aviso le diría a cada persona del mall que su inscripción no vale. La ventana
- * de ensayo termina donde empieza la primera jornada real, así que basta
- * preguntarle al calendario si hay jornada real corriendo.
+ * Tampoco es el interruptor de ensayo a secas: la RPC comprueba que la jornada
+ * activa sea efectivamente la de pruebas antes de encender el aviso público.
  */
-export type EstadoVigente = EstadoEfectivo & { pruebas: boolean };
+export type EstadoVigente = EstadoEfectivo & {
+  pruebas: boolean;
+  ventanaDesde: Date | null;
+  ventanaHasta: Date | null;
+};
 
-type Publico = { abiertas: boolean | null; pruebas: boolean };
+type Publico = {
+  abiertas: boolean | null;
+  pruebas: boolean;
+  controlManual: boolean;
+  ventanaDesde: string | null;
+  ventanaHasta: string | null;
+};
 
 async function consultar(): Promise<Publico> {
   const supabase = supabasePublico();
-  if (!supabase) return { abiertas: null, pruebas: false };
+  if (!supabase) {
+    return {
+      abiertas: null,
+      pruebas: false,
+      controlManual: false,
+      ventanaDesde: null,
+      ventanaHasta: null,
+    };
+  }
 
-  const { data, error } = await supabase.rpc("estado_publico");
+  const { data, error } = await supabase.rpc("estado_ruleta_publico");
   if (error) throw new Error(error.message);
 
   // La RPC devuelve una fila. PostgREST la entrega como array salvo que se
   // pida single, y pedirlo obligaría a tratar el 0-filas como error.
   const fila = (Array.isArray(data) ? data[0] : data) as
-    | { inscripciones_abiertas: boolean | null; modo_pruebas: boolean }
+    | {
+        inscripciones_abiertas: boolean;
+        modo_pruebas: boolean;
+        control_manual: boolean;
+        ventana_desde: string | null;
+        ventana_hasta: string | null;
+      }
     | undefined;
 
   return {
     abiertas: fila?.inscripciones_abiertas ?? null,
     pruebas: fila?.modo_pruebas === true,
+    controlManual: fila?.control_manual === true,
+    ventanaDesde: fila?.ventana_desde ?? null,
+    ventanaHasta: fila?.ventana_hasta ?? null,
   };
 }
 
@@ -61,15 +89,14 @@ async function consultar(): Promise<Publico> {
  * servidor de /i y de /inscripcion: el render en sí es despreciable. Ese retardo
  * se pagaba en cada apertura del modal, antes de pintar un solo pixel.
  *
- * También es una cifra de escala: dimensionados para 10.000 inscripciones al día
- * y con unas tres vistas por persona, son ~30.000 llamadas diarias para leer un
- * booleano que cambia dos veces en toda la campaña.
+ * Con unas tres vistas por persona y 500 altas diarias, evita alrededor de
+ * 1.500 llamadas repetidas para leer datos que cambian pocas veces.
  *
  * Se cachea SOLO lo que dice la base. `estadoEfectivo` se aplica fuera porque
  * recibe un Date: dentro de la función cacheada ese argumento entraría en la
  * clave y la caché no acertaría nunca.
  */
-const consultarCacheado = unstable_cache(consultar, ["estado-publico"], {
+const consultarCacheado = unstable_cache(consultar, ["estado-ruleta-publico-v1"], {
   // Techo del desfase si la invalidación por etiqueta fallara. En condiciones
   // normales no se llega: el panel invalida al mover el interruptor.
   revalidate: 30,
@@ -89,12 +116,35 @@ export async function estadoVigente(
   } = {},
 ): Promise<EstadoVigente> {
   try {
-    const { abiertas, pruebas } = await (opciones.fresco
+    const {
+      abiertas,
+      pruebas,
+      controlManual,
+      ventanaDesde,
+      ventanaHasta,
+    } = await (opciones.fresco
       ? consultar()
       : consultarCacheado());
+    const desde = fecha(ventanaDesde);
+    const hasta = fecha(ventanaHasta);
+    if (!controlManual && abiertas !== null) {
+      return {
+        estado: abiertas
+          ? "abierto"
+          : desde && ahora < desde
+            ? "antes"
+            : "cerrado",
+        fuente: "calendario",
+        pruebas,
+        ventanaDesde: desde,
+        ventanaHasta: hasta,
+      };
+    }
     return {
       ...estadoEfectivo(abiertas, ahora),
-      pruebas: pruebas && jornadaDe(ahora) === null,
+      pruebas,
+      ventanaDesde: desde,
+      ventanaHasta: hasta,
     };
   } catch (e) {
     console.error(
@@ -107,6 +157,17 @@ export async function estadoVigente(
      * durante la activación real le estaría diciendo a cada persona del mall
      * que su inscripción no vale.
      */
-    return { ...estadoEfectivo(null, ahora), pruebas: false };
+    return {
+      ...estadoEfectivo(null, ahora),
+      pruebas: false,
+      ventanaDesde: inicio(),
+      ventanaHasta: cierre(),
+    };
   }
+}
+
+function fecha(valor: string | null): Date | null {
+  if (!valor) return null;
+  const d = new Date(valor);
+  return Number.isNaN(d.getTime()) ? null : d;
 }

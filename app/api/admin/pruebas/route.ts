@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { conSesion } from "@/lib/admin";
-import { jornadaDe, jornadas } from "@/lib/concurso";
 import { plantilla, type TipoCorreo } from "@/lib/email";
 import { remitente, resendCliente, respuestaA } from "@/lib/resend";
 
@@ -9,7 +8,7 @@ export const dynamic = "force-dynamic";
 // Un envío con reintento del proveedor puede pasarse de los 10 s por defecto.
 export const maxDuration = 30;
 
-const TIPOS: TipoCorreo[] = ["confirmacion", "ganador"];
+const TIPOS: TipoCorreo[] = ["ganador"];
 
 /**
  * Envía una de las dos plantillas a una dirección, para revisarla de verdad.
@@ -80,14 +79,8 @@ export const POST = conSesion(async ({ request, usuario }) => {
     );
   }
 
-  /*
-   * La confirmación lleva la línea del sorteo, así que la prueba tiene que
-   * llevarla también: es la parte nueva y la que hay que revisar. Se usa la
-   * jornada vigente y, fuera de la activación, la primera del calendario, para
-   * que la línea se vea igual antes de que empiece.
-   */
-  const jornada = jornadaDe() ?? jornadas()[0] ?? null;
-  const { asunto, html, texto } = plantilla(tipo, nombre, jornada?.sorteoAt);
+  // PRUEBA 1 es parte del contenido de prueba; no toca el contador real.
+  const { asunto, html, texto } = plantilla(tipo, nombre, null, null, 1);
 
   try {
     const { data, error } = await resend.emails.send({
@@ -110,8 +103,6 @@ export const POST = conSesion(async ({ request, usuario }) => {
     return NextResponse.json({
       ok: true,
       proveedor_id: data?.id ?? null,
-      // Se devuelve para que el panel pueda decir qué jornada salió en el texto.
-      sorteo: jornada?.nombre ?? null,
     });
   } catch (e) {
     const detalle = e instanceof Error ? e.message : String(e);

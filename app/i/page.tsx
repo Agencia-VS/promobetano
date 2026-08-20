@@ -4,7 +4,7 @@ import { Lockup } from "@/components/Lockup";
 import { Footer18 } from "@/components/Footer18";
 import { InfoBadge } from "@/components/InfoBadge";
 import { SEDE } from "@/lib/campana";
-import { cierre, fechaCorta } from "@/lib/concurso";
+import { fechaCorta } from "@/lib/concurso";
 import { estadoVigente } from "@/lib/concurso-servidor";
 
 // La placa muestra la ventana de inscripción contra el reloj de cada visita.
@@ -13,15 +13,16 @@ export const dynamic = "force-dynamic";
 export default async function PortadaPage() {
   // La placa refleja el estado vigente, interruptor manual incluido: si el
   // equipo cierra a mano, la portada no puede seguir invitando a inscribirse.
-  const { estado } = await estadoVigente();
-  const hasta = cierre();
+  const { estado, ventanaDesde, ventanaHasta } = await estadoVigente();
   const ventana =
     estado === "abierto"
-      ? hasta
-        ? `Hasta el ${fechaCorta(hasta)}`
+      ? ventanaHasta
+        ? `Hasta el ${fechaCorta(ventanaHasta)}`
         : "Abiertas"
       : estado === "antes"
-        ? "Abren pronto"
+        ? ventanaDesde
+          ? `Abren el ${fechaCorta(ventanaDesde)}`
+          : "Abren pronto"
         : estado === "cerrado"
           ? "Cerradas"
           : null;
@@ -48,30 +49,35 @@ export default async function PortadaPage() {
               margin: "26px 0 0",
               fontFamily: "var(--font-title)",
               fontWeight: 800,
-              // El titular es el elemento de campaña: en móvil son 25px y en
-              // escritorio crece con el viewport hasta que la caja lo topa.
-              fontSize: "clamp(25px, 3.2vw, 44px)",
-              lineHeight: 1.06,
-              letterSpacing: ".055em",
+              fontSize: "clamp(27px, 3.45vw, 47px)",
+              lineHeight: 1.02,
+              letterSpacing: ".045em",
               textTransform: "uppercase",
               color: "#FFFFFF",
+              textWrap: "balance",
+            }}
+          >
+            Confía y participa por 1 de los 90 Eau de Confianza
+          </h1>
+
+          <p
+            className="bajada-portada"
+            style={{
+              // No usar `margin` shorthand: pisaba el margin-inline:auto del
+              // centrado móvil y dejaba esta caja pegada a la izquierda.
+              marginTop: 16,
+              marginBottom: 0,
+              fontFamily: "var(--font-title)",
+              fontWeight: 500,
+              fontSize: "clamp(13px, 1.05vw, 16px)",
+              lineHeight: 1.5,
+              letterSpacing: ".035em",
+              color: "rgba(255,255,255,.82)",
+              maxWidth: "42ch",
               textWrap: "pretty",
             }}
           >
             Hay un aroma para el momento en que decides confiar en ti
-          </h1>
-
-          <p
-            style={{
-              margin: "26px 0 0",
-              fontSize: "clamp(15.5px, 1.15vw, 18px)",
-              lineHeight: 1.65,
-              color: "#FFFFFF",
-              maxWidth: "38ch",
-            }}
-          >
-            Un perfume único en su tipo, elaborado con aromas científicamente
-            comprobados para hacerte sentir más seguro.
           </p>
         </>
       }

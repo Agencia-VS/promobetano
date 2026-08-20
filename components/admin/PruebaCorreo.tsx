@@ -3,8 +3,7 @@
 import { useState } from "react";
 
 const TIPOS = [
-  { valor: "confirmacion", nombre: "Confirmación de inscripción" },
-  { valor: "ganador", nombre: "Ganador" },
+  { valor: "ganador", nombre: "Ganador con número PRUEBA 1" },
 ] as const;
 
 /**
@@ -16,12 +15,12 @@ const TIPOS = [
  * el correo donde lo va a abrir la gente.
  *
  * No toca la base: no crea inscripciones ni encola nada, así que probar cien
- * veces no ensucia el sorteo ni gasta el correo de confirmación de nadie.
+ * veces no ensucia la ruleta ni gasta un folio real.
  */
 export function PruebaCorreo() {
   const [email, setEmail] = useState("");
   const [nombre, setNombre] = useState("");
-  const [tipo, setTipo] = useState<string>("confirmacion");
+  const [tipo, setTipo] = useState<string>("ganador");
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [exito, setExito] = useState<string | null>(null);

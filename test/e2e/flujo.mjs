@@ -37,7 +37,9 @@ const browser = await chromium.launch(
  * exitosa, para que los bloques que prueban la interfaz no dependan de tener
  * un Supabase levantado.
  */
-const nueva = async (respuesta = { status: 201, body: { ok: true } }) => {
+const nueva = async (
+  respuesta = { status: 201, body: { ok: true, ganador: false } },
+) => {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
   await ctx.route("**/api/inscripcion", (route) =>
     route.fulfill({
@@ -100,6 +102,7 @@ console.log("\n=== 3. El draft NO arrastra consentimiento ni datos de otra perso
   await p.waitForLoadState("networkidle");
   // Persona A llena y marca las casillas, sin enviar
   await p.goto(B + "/inscripcion", { waitUntil: "networkidle" });
+  check((await p.locator('input[type=checkbox]').count()) === 2, "el formulario solo muestra edad y bases, sin casilla promocional");
   await p.fill("#f-nombre", "Ana Perez");
   await p.fill("#f-email", "ana@correo.cl");
   await p.fill("#f-rut", "12.345.678-5");
@@ -118,7 +121,7 @@ console.log("\n=== 3. El draft NO arrastra consentimiento ni datos de otra perso
   check(new URL(p.url()).pathname === "/inscripcion", "no deja enviar sin marcar consentimiento");
   check((await p.locator("text=Necesitamos las dos casillas").count()) > 0, "muestra el error legal");
   const draft = await p.evaluate(() => localStorage.getItem("edc_draft"));
-  check(draft !== null && !/edad|bases|mkt/.test(draft), `el draft no contiene consentimiento (${draft?.slice(0,60)}...)`);
+  check(draft !== null && !/edad|bases/.test(draft), `el draft no contiene consentimiento (${draft?.slice(0,60)}...)`);
   await ctx.close();
 }
 
@@ -194,14 +197,16 @@ console.log("\n=== 6. /listo: guard + sin hydration mismatch ===");
   await p.click('button[type=submit]');
   await p.waitForURL("**/listo", { timeout: 5000 });
   await p.waitForLoadState("networkidle");
-  check((await p.locator("text=ana@correo.cl").count()) > 0, "muestra el correo real enviado");
+  await p.waitForTimeout(3100);
+  check((await p.locator("text=Esta vez no ganaste").count()) > 0, "revela el resultado perdedor");
+  check((await p.locator("text=ana@correo.cl").count()) === 0, "no promete correo a quien no gana");
   // recarga dura: es donde antes explotaba la hidratacion
   errores.length = 0;
   await p.reload({ waitUntil: "networkidle" });
-  await p.waitForTimeout(600);
+  await p.waitForTimeout(3100);
   const hidra = errores.filter((e) => /hydrat|418|423|Minified React error/i.test(e));
   check(hidra.length === 0, `recarga de /listo sin error de hidratacion (${hidra.length ? hidra[0].slice(0,120) : "limpio"})`);
-  check((await p.locator("text=ana@correo.cl").count()) > 0, "tras recargar sigue mostrando el correo");
+  check((await p.locator("text=Esta vez no ganaste").count()) > 0, "tras recargar conserva el mismo resultado");
   await ctx.close();
 }
 
@@ -277,12 +282,14 @@ console.log("\n=== 8. Atribucion de panel ===");
   // servidor puede leer con o sin matcher, y es el respaldo del arreglo.
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
   let cookieDelAlta = null;
+  let cuerpoDelAlta = null;
   await ctx.route("**/api/inscripcion", (route) => {
     cookieDelAlta = route.request().headers()["cookie"] ?? "";
+    cuerpoDelAlta = JSON.parse(route.request().postData() ?? "{}");
     return route.fulfill({
       status: 201,
       contentType: "application/json",
-      body: JSON.stringify({ ok: true, sorteo: "viernes 21 de agosto" }),
+      body: JSON.stringify({ ok: true, ganador: false }),
     });
   });
   const p = await ctx.newPage();
@@ -301,14 +308,18 @@ console.log("\n=== 8. Atribucion de panel ===");
   await p.waitForTimeout(600);
   check(/edc_origen=costanera-center-04/.test(cookieDelAlta ?? ""),
     `el POST de alta lleva la atribucion de panel (${cookieDelAlta ?? "sin peticion"})`);
+  check(
+    /^[0-9a-f-]{36}$/i.test(cuerpoDelAlta?.request_id ?? ""),
+    "el POST lleva request_id para recuperar el mismo resultado al reintentar",
+  );
   await ctx.close();
 }
 
-console.log("\n=== 8b. Portada y confirmacion: sede y premio ===");
+console.log("\n=== 8b. Portada y ruleta: ganador con folio ===");
 {
   const { ctx, p } = await nueva({
     status: 201,
-    body: { ok: true, sorteo: "viernes 21 de agosto" },
+    body: { ok: true, ganador: true, numero_ganador: 7 },
   });
   await p.goto(B + "/edad", { waitUntil: "domcontentloaded" });
   await p.getByRole("button", { name: /tengo 18/i }).click();
@@ -317,6 +328,12 @@ console.log("\n=== 8b. Portada y confirmacion: sede y premio ===");
   // La sede es fija: aparece tambien sin ?p=, que antes decia "Panel por definir".
   check((await p.locator("text=Costanera Center").count()) > 0, "la portada nombra la sede sin depender del ?p=");
   check((await p.locator("text=Panel por definir").count()) === 0, "ya no queda el placeholder de panel");
+  check((await p.getByRole("heading", { name: /confía y participa por 1 de los 90 eau de confianza/i }).count()) === 1,
+    "la portada muestra el nuevo titulo principal");
+  check((await p.locator("h1 + p", { hasText: "Hay un aroma para el momento en que decides confiar en ti" }).count()) === 1,
+    "la frase de aroma aparece como bajada inmediata del titulo");
+  check((await p.locator("text=Un perfume único en su tipo").count()) === 0,
+    "la portada ya no muestra el texto descriptivo eliminado");
 
   await p.goto(B + "/inscripcion", { waitUntil: "networkidle" });
   await p.fill("#f-nombre", "Ana Perez");
@@ -327,12 +344,36 @@ console.log("\n=== 8b. Portada y confirmacion: sede y premio ===");
   await p.locator('input[type=checkbox]').nth(1).check();
   await p.click('button[type=submit]');
   await p.waitForURL("**/listo", { timeout: 5000 });
-  check((await p.locator("text=Perfume Eau de Confianza").count()) > 0, "/listo nombra el premio");
-  check((await p.locator("text=viernes 21 de agosto").count()) > 0, "/listo muestra el dia del sorteo");
-  check((await p.locator("text=Por definir").count()) === 0, "no queda ningun 'Por definir' en /listo");
-  // Ninguna hora en las placas: era el "a las 05:00" del correo del smoke test.
-  const placas = await p.locator("text=/SORTEO|Sorteo/").first().textContent().catch(() => "");
-  check(!/\d{2}:\d{2}/.test(placas ?? ""), `la placa del sorteo no lleva hora (${(placas ?? "").trim().slice(0, 40)})`);
+  check((await p.locator("text=Girando la ruleta").count()) > 0, "muestra la animacion antes del resultado");
+  check((await p.locator(".ruleta__segmento").count()) === 6, "la ruleta tiene seis segmentos con perfume");
+  await p.waitForTimeout(3100);
+  check((await p.locator("text=¡Ganaste!").count()) > 0, "revela la pantalla de ganador");
+  check((await p.locator("text=#007").count()) > 0, "muestra el folio correlativo");
+  check((await p.locator("text=ana@correo.cl").count()) > 0, "dice a que correo fue el respaldo");
+  await ctx.close();
+}
+
+console.log("\n=== 8c. Modo pruebas: correlativo aislado ===");
+{
+  const { ctx, p } = await nueva({
+    status: 201,
+    body: { ok: true, ganador: true, numero_ganador: 2, pruebas: true },
+  });
+  await p.goto(B + "/edad?next=%2Finscripcion", { waitUntil: "domcontentloaded" });
+  await p.getByRole("button", { name: /tengo 18/i }).click();
+  await p.waitForURL("**/inscripcion", { timeout: 5000 });
+  await p.fill("#f-nombre", "Ana Perez");
+  await p.fill("#f-email", "ana@correo.cl");
+  await p.fill("#f-tel", "87654321");
+  await p.fill("#f-rut", "12.345.678-5");
+  await p.locator('input[type=checkbox]').nth(0).check();
+  await p.locator('input[type=checkbox]').nth(1).check();
+  await p.click('button[type=submit]');
+  await p.waitForURL("**/listo", { timeout: 5000 });
+  await p.waitForTimeout(3100);
+  check((await p.locator("text=PRUEBA 2").count()) > 0, "el ensayo muestra PRUEBA 2 y no un folio real");
+  check((await p.locator("text=#002").count()) === 0, "el ensayo nunca presenta #002");
+  check((await p.locator("text=Enviaremos el respaldo de prueba").count()) > 0, "el ganador de ensayo anuncia su correo de respaldo");
   await ctx.close();
 }
 
@@ -341,7 +382,7 @@ console.log("\n=== 9. /bases existe y es alcanzable sin puerta ===");
   const { ctx, p } = await nueva();
   const r = await p.goto(B + "/bases", { waitUntil: "domcontentloaded" });
   check(r.status() === 200 && new URL(p.url()).pathname === "/bases", `/bases responde 200 sin puerta (${r.status()} ${new URL(p.url()).pathname})`);
-  check((await p.locator("text=Responsable del tratamiento").count()) > 0, "/bases tiene la estructura de la Ley 21.719");
+  check((await p.locator("text=Responsable del tratamiento").count()) > 0, "/bases contiene la información del tratamiento de datos");
   await ctx.close();
 }
 
@@ -359,7 +400,7 @@ console.log("\n=== 10. Fallo del alta y reintento ===");
   await p.locator("#f-rut").fill("9568547-1");
   await p.locator("input[type=checkbox]").nth(0).check();
   await p.locator("input[type=checkbox]").nth(1).check();
-  await p.getByRole("button", { name: /dale/i }).click();
+  await p.getByRole("button", { name: /girar/i }).click();
   await p.waitForTimeout(600);
 
   check(new URL(p.url()).pathname === "/inscripcion", `un alta rechazada NO navega a /listo (${new URL(p.url()).pathname})`);
@@ -384,7 +425,7 @@ console.log("\n=== 10. Fallo del alta y reintento ===");
   await p.locator("#f-rut").fill("9568547-1");
   await p.locator("input[type=checkbox]").nth(0).check();
   await p.locator("input[type=checkbox]").nth(1).check();
-  await p.getByRole("button", { name: /dale/i }).click();
+  await p.getByRole("button", { name: /girar/i }).click();
   await p.waitForTimeout(600);
   check((await p.locator("[role=alert]").count()) > 0, "una caida de red muestra alerta");
   check((await p.getByRole("button", { name: /reintentar/i }).count()) > 0, "y deja reintentar");
@@ -412,15 +453,15 @@ console.log("\n=== 11. Modal desde la portada ===");
   await p.locator("input[type=checkbox]").nth(0).check();
   await p.locator("input[type=checkbox]").nth(1).check();
   await p.click("button[type=submit]");
-  await p.waitForTimeout(900);
+  await p.waitForTimeout(3100);
 
-  // Lo que se pidio: el modal cambia a "quedaste dentro" EN SU SITIO.
+  // La ruleta y su resultado permanecen dentro del modal interceptado.
   check(new URL(p.url()).pathname === "/inscripcion", `el exito NO navega a otra pantalla (${new URL(p.url()).pathname})`);
-  check((await p.locator("text=Quedaste dentro").count()) > 0, "el modal cambia a 'quedaste dentro'");
-  check((await p.locator("text=ana@correo.cl").count()) > 0, "muestra el correo real en el modal");
+  check((await p.locator("text=Esta vez no ganaste").count()) > 0, "el modal revela el resultado");
+  check((await p.locator("text=ana@correo.cl").count()) === 0, "el perdedor no recibe correo");
   check((await p.locator(".modal-panel").count()) > 0, "sigue siendo el modal, no la pantalla completa");
 
-  await p.getByRole("button", { name: /^listo$/i }).click();
+  await p.getByRole("button", { name: /^cerrar$/i }).click();
   await p.waitForTimeout(700);
   check(new URL(p.url()).pathname === "/i", `cerrar devuelve a la portada (${new URL(p.url()).pathname})`);
   check((await p.locator(".modal-panel").count()) === 0, "el modal queda cerrado");

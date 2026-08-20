@@ -19,6 +19,9 @@ archivo en columnas generadas.
 | `…20260819170000_jornadas.sql` | **Jornadas**: `inscripciones.sorteo_id`, unicidad por jornada, pool por jornada, exclusión de premiados |
 | `…20260819180000_correos_ganador_manual.sql` | Solo dos correos: confirmación automática y ganador a mano |
 | `…20260820120000_pruebas.sql` | **Modo pruebas**: jornada de ensayo, identidades sin límite, aislamiento del sorteo real y borrado de lo que deje |
+| `…20260820230000_ruleta_instantanea.sql` | **Ruleta**: configuración manual/automática, bloques N, stock diario y folios 1–90 |
+| `…20260820233000_ruleta_pruebas_reales.sql` | **Ensayo de ruleta**: mismos bloques N en carril aislado, folios `PRUEBA N` y correo de ganador |
+| `…20260820234500_ruleta_configuracion_pruebas.sql` | **Panel de pruebas**: modo, N, ventana, tendencia y contadores independientes del stock real |
 
 ## Aplicar
 

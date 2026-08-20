@@ -4,8 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Eau de Confianza — Betano x Cristián Riquelme",
-  description:
-    "Hay un aroma para el momento en que decides confiar en ti. Inscríbete y entra al sorteo.",
+  description: "Confía y participa por 1 de los 90 Eau de Confianza.",
   icons: {
     icon: "/brand/isoBetano.png",
     apple: "/brand/isoBetano.png",
