@@ -61,8 +61,12 @@ export default async function PortadaPage() {
           </h1>
 
           <p
+            className="bajada-portada"
             style={{
-              margin: "16px 0 0",
+              // No usar `margin` shorthand: pisaba el margin-inline:auto del
+              // centrado móvil y dejaba esta caja pegada a la izquierda.
+              marginTop: 16,
+              marginBottom: 0,
               fontFamily: "var(--font-title)",
               fontWeight: 500,
               fontSize: "clamp(13px, 1.05vw, 16px)",

@@ -393,6 +393,13 @@
   margin-inline: auto;
 }
 
+/* La bajada es más angosta que el titular. Centrar tanto su caja como su texto
+   evita que parezca desplazada aunque haga salto de línea en un teléfono. */
+.pantalla__grid--portada .bajada-portada {
+  align-self: center;
+  text-align: center;
+}
+
 @media (min-width: 768px) {
   .pantalla__grid--portada .pantalla__poster {
     text-align: left;
@@ -400,6 +407,11 @@
 
   .pantalla__grid--portada .pantalla__poster p {
     margin-inline: 0;
+  }
+
+  .pantalla__grid--portada .bajada-portada {
+    align-self: flex-start;
+    text-align: left;
   }
 }
 

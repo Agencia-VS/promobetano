@@ -301,28 +301,48 @@ function ganaste(
       : null;
   const etiquetaFolio = esPrueba ? "Número de prueba" : "Número de ganador";
   const bloqueFolio = folio
-    ? `<div style="margin:24px 0 4px;padding:18px 20px;background:${MARCA.bone};color:${MARCA.ink};border-radius:4px;">
+    ? `<div style="margin:26px 0;padding:18px 20px;background:${MARCA.bone};color:${MARCA.ink};border-radius:4px;">
 <span style="display:block;margin-bottom:5px;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;">${etiquetaFolio}</span>
 <strong style="font-size:38px;line-height:1;letter-spacing:.08em;">${folio}</strong>
 </div>`
     : "";
   const lineaFolio = folio ? `\n${etiquetaFolio}: ${folio}.` : "";
-  const instruccion = `Si aún no has retirado tu premio, acércate al stand de premiación y presenta tu ${etiquetaFolio.toLowerCase()}. Si ya lo retiraste, puedes omitir este correo.`;
-  const instruccionPersonal = `${quien}, ${instruccion.replace(/^Si/, "si")}`;
-  const instruccionPersonalTexto = `${quienTexto}, ${instruccion.replace(/^Si/, "si")}`;
+  const retiro = `si aún no has retirado tu premio, acércate al stand de premiación y presenta tu ${etiquetaFolio.toLowerCase()}.`;
+  const omision = "Si ya retiraste tu premio, puedes omitir este correo.";
+  const retiroHtml = `${quien}, ${retiro}`;
+  const retiroTexto = `${quienTexto}, ${retiro}`;
+  const preheader = `¡Confiaste y ganaste! ${folio ? `Tu número es ${folio}. ` : ""}${omision}`;
 
   return {
     asunto: "¡Confiaste y ganaste! — Eau de Confianza",
-    html: pieza(
-      `¡Confiaste y ganaste! ${instruccion}${folio ? ` Tu número es ${folio}.` : ""}`,
-      `${antetitulo("Resultado confirmado")}
-${titular("¡Confiaste y ganaste!", MARCA.confianza)}
-<p style="margin:18px 0 0;font-size:16px;line-height:1.65;color:${CUERPO};">${instruccionPersonal}</p>
-${bloqueFolio}`,
-    ),
+    // Respaldo deliberadamente plano: sin lockup, tablas, antetítulo ni pasos
+    // del perfume. La pantalla física es la prueba principal; este correo solo
+    // repite la instrucción y el correlativo por si la persona lo necesita.
+    html: `<!doctype html>
+<html lang="es"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width">
+<meta name="color-scheme" content="dark">
+<meta name="supported-color-schemes" content="dark">
+</head>
+<body style="margin:0;padding:0;background:${MARCA.ink};">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapaHtml(preheader)}</div>
+<div style="max-width:520px;margin:0 auto;padding:40px 24px;font-family:${TIPOGRAFIA};color:${MARCA.bone};">
+<h1 style="margin:0;font-size:30px;line-height:1.12;color:${MARCA.confianza};">¡Confiaste y ganaste!</h1>
+<p style="margin:20px 0 0;font-size:16px;line-height:1.65;color:${CUERPO};">${retiroHtml}</p>
+${bloqueFolio}
+<p style="margin:0;font-size:15px;line-height:1.6;color:${CUERPO};">${omision}</p>
+<p style="margin:32px 0 0;padding-top:20px;border-top:1px solid ${MARCA.rust};font-size:12px;line-height:1.6;color:rgba(249,241,233,.6);">
+Solo mayores de 18 años. Juega con responsabilidad.<br>
+Consultas sobre tus datos: <a href="mailto:${CORREO_DATOS}" style="color:${MARCA.bone};">${CORREO_DATOS}</a>
+</p>
+</div>
+</body></html>`,
     texto: `¡Confiaste y ganaste!
 
-${instruccionPersonalTexto}${lineaFolio}
+${retiroTexto}${lineaFolio}
+
+${omision}
 
 ${PIE_TEXTO}`,
   };

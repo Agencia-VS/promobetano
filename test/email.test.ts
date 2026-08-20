@@ -66,37 +66,21 @@ test("sin dominio configurado no se emite ninguna imagen", () => {
   });
 });
 
-test("con dominio, las imágenes son absolutas y llevan alt", () => {
+test("solo la confirmación conserva el lockup de campaña", () => {
   conDominio("https://eaudeconfianza.cl", () => {
-    for (const tipo of TIPOS) {
-      const { html } = plantilla(tipo, "Ana");
-      assert.ok(
-        html.includes("https://eaudeconfianza.cl/email/"),
-        `${tipo}: la imagen no es absoluta`,
-      );
-      assert.ok(!html.includes('alt=""'), `${tipo}: una imagen sin alt`);
-    }
-    // El lockup es la cabecera de las dos piezas.
-    for (const tipo of TIPOS) {
-      const { html } = plantilla(tipo, "Ana");
-      assert.ok(
-        html.includes("/email/lockup-600.png"),
-        `${tipo}: falta el lockup`,
-      );
-    }
+    const confirmacion = plantilla("confirmacion", "Ana").html;
+    const ganador = plantilla("ganador", "Ana", null, 1).html;
+    assert.match(confirmacion, /https:\/\/eaudeconfianza\.cl\/email\/lockup-600\.png/);
+    assert.doesNotMatch(confirmacion, /alt=""/);
+    assert.doesNotMatch(ganador, /<img|lockup-600/);
   });
 });
 
-test("el isotipo ya no viaja: el lockup es el único logo", () => {
-  // El lockup ya dice «RIQUELME + Betano», así que el isotipo era una segunda
-  // firma de la misma marca ocupando una franja entera del correo.
+test("el respaldo ganador no lleva imágenes ni tablas decorativas", () => {
   conDominio("https://eaudeconfianza.cl", () => {
-    for (const tipo of TIPOS) {
-      const { html } = plantilla(tipo, "Ana");
-      assert.ok(!html.includes("iso-96"), `${tipo}: sigue trayendo el isotipo`);
-      const imagenes = html.match(/<img/g) ?? [];
-      assert.equal(imagenes.length, 1, `${tipo}: debería llevar una sola imagen`);
-    }
+    const { html } = plantilla("ganador", "Ana", null, 1);
+    assert.doesNotMatch(html, /<img|<table|iso-96|lockup-600/);
+    assert.doesNotMatch(html, /Resultado confirmado|Saliste sorteado/i);
   });
 });
 
@@ -137,12 +121,13 @@ test("el correo de ganador es un respaldo simple con su folio", () => {
   assert.match(html, /si aún no has retirado tu premio/i);
   assert.match(html, /acércate al stand de premiación/i);
   assert.match(texto, /acércate al stand de premiación/i);
-  assert.match(html, /Si ya lo retiraste, puedes omitir este correo/i);
-  assert.match(texto, /Si ya lo retiraste, puedes omitir este correo/i);
+  assert.match(html, /Si ya retiraste tu premio, puedes omitir este correo/i);
+  assert.match(texto, /Si ya retiraste tu premio, puedes omitir este correo/i);
   assert.match(html, /Número de ganador/);
   assert.match(html, /#007/);
   assert.match(texto, /Número de ganador: #007/);
   assert.doesNotMatch(html, /el equipo se contactará contigo/i);
+  assert.doesNotMatch(html, /Te lo ganaste|Abre la botella/i);
 });
 
 test("el ganador de ensayo recibe un correlativo PRUEBA separado", () => {
