@@ -15,6 +15,12 @@ export type Confirmado = {
    * /listo por eso.
    */
   sorteo?: string;
+  /**
+   * El alta fue un ensayo. Opcional por lo mismo que `sorteo`: un payload
+   * guardado por una versión anterior no lo trae, y ausente significa «no era
+   * una prueba», que es lo correcto para el 100% de las altas reales.
+   */
+  pruebas?: boolean;
 };
 
 const listeners = new Set<() => void>();
@@ -36,7 +42,8 @@ function esConfirmado(x: unknown): x is Confirmado {
     // `sorteo` es opcional, pero si viene tiene que ser texto: sin este guard un
     // valor raro se interpolaría en JSX y crashearía /listo, que es el defecto
     // que ya ocurrió una vez con `email`.
-    (d.sorteo === undefined || typeof d.sorteo === "string")
+    (d.sorteo === undefined || typeof d.sorteo === "string") &&
+    (d.pruebas === undefined || typeof d.pruebas === "boolean")
   );
 }
 

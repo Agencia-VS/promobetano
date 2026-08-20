@@ -17,6 +17,8 @@ type Fila = {
   email_estado: string;
   acepta_marketing: boolean;
   sorteo_id: number;
+  /** Fila de ensayo. No cuenta en ninguna cifra y se borra desde /admin. */
+  es_prueba: boolean;
 };
 
 type Cursor = { at: string; id: number } | null;
@@ -189,7 +191,17 @@ export function ListaInscripciones({
                     las 22:00 entra al sorteo del sábado, y leer solo la hora
                     llevaría a contarlo en el día equivocado. */}
                 <td className="tabla__tenue">{nombreJornada(f.sorteo_id)}</td>
-                <td>{f.nombre}</td>
+                <td>
+                  {f.nombre}
+                  {f.es_prueba ? (
+                    <>
+                      {" "}
+                      {/* Sin esta marca, cuarenta altas del equipo con el mismo
+                          RUT se leen como un ataque al formulario. */}
+                      <span className="pastilla pastilla--declinado">prueba</span>
+                    </>
+                  ) : null}
+                </td>
                 <td>{f.email}</td>
                 <td>+56 9 {f.telefono}</td>
                 <td>{f.documento}</td>

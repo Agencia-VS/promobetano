@@ -17,6 +17,8 @@ archivo en columnas generadas.
 | `…20260819100000_configuracion.sql` | Interruptor manual, `listar_sorteos`, `listar_resultados`, `crear_sorteo` |
 | `…20260819150000_tomado_at.sql` | `email_outbox.tomado_at`: corrige un correo duplicado bajo acumulación |
 | `…20260819170000_jornadas.sql` | **Jornadas**: `inscripciones.sorteo_id`, unicidad por jornada, pool por jornada, exclusión de premiados |
+| `…20260819180000_correos_ganador_manual.sql` | Solo dos correos: confirmación automática y ganador a mano |
+| `…20260820120000_pruebas.sql` | **Modo pruebas**: jornada de ensayo, identidades sin límite, aislamiento del sorteo real y borrado de lo que deje |
 
 ## Aplicar
 
@@ -73,6 +75,76 @@ comprueban cosas distintas:
   incontestable: `elegible` y `email_estado` son mutables, así que reconstruir la
   pertenencia desde el estado actual daba una respuesta distinta cada día.
 
+## Pruebas en producción
+
+Antes de que abra el concurso no se puede probar nada contra la base real: el
+calendario dice «antes», y aunque se abriera el interruptor manual ninguna
+jornada cubre el instante, así que el alta muere en `sin_jornada` —`sorteo_id`
+es `not null` y lo resuelve un trigger contra las ventanas cargadas—.
+
+La tarjeta **Pruebas en producción** de `/admin` resuelve las tres cosas de un
+clic:
+
+| Botón | RPC | Qué hace |
+| --- | --- | --- |
+| Abrir pruebas | `abrir_pruebas` | Crea la jornada de ensayo `clave = 'prueba'` con ventana `[ahora, comienzo de la próxima jornada real)`, abre el interruptor y enciende `configuracion.modo_pruebas`. **Se niega si hay una jornada real corriendo** |
+| Cerrar pruebas | `cerrar_pruebas` | Devuelve el interruptor al calendario y cierra la ventana del ensayo. No borra nada |
+| Borrar datos de prueba | `purgar_pruebas` | Borra en cascada la cola, resultados, pool, excluidos, inscripciones, auditoría y el sorteo de ensayo |
+
+Las garantías, todas impuestas por el esquema y no por la aplicación:
+
+- **Aislamiento.** `ejecutar_sorteo` aparta del pool de todo sorteo REAL las
+  filas con `es_prueba`, con `motivo = 'prueba'` congelado en
+  `sorteo_excluidos`. Un premio de ensayo tampoco excluye a nadie de un sorteo
+  real ni aparece en `premiados_duplicados()`.
+- **La ventana se cierra sola.** Termina exactamente donde empieza la primera
+  jornada real, así que olvidarse de apagar el modo no mete ni una inscripción
+  real en la jornada de ensayo. Una jornada de prueba en borrador tampoco
+  bloquea el orden de ejecución de las reales.
+- **Sin límite para el equipo.** Los índices únicos por jornada son parciales
+  (`where not identidad_prueba`), así que el RUT y el correo de
+  `identidades_prueba` se inscriben las veces que haga falta. Para cualquier
+  otro RUT la unicidad sigue igual, y por eso el mensaje de «ya estás inscrito»
+  también se puede probar.
+- **Las cifras no se ensucian.** `resumen_inscripciones`, `resumen_por_panel`,
+  `resumen_jornadas` y `listar_sorteos` cuentan los ensayos aparte, en su propia
+  columna. Nunca dentro del total.
+- **El público se entera, y solo cuando es verdad.** Con el modo encendido, el
+  formulario dice en la misma pantalla que esas inscripciones no entran a ningún
+  sorteo y se borran. El aviso NO se pinta si hay una jornada real corriendo:
+  `estadoVigente` lo condiciona a que el calendario no tenga jornada en curso,
+  así que olvidarse de apagar el modo no le dice a nadie del mall que su
+  inscripción no vale. Y `abrir_pruebas` se niega a encenderse durante una
+  jornada real: dentro de ella la identidad del equipo ya se inscribe sin límite
+  y queda fuera del pool, porque su exención es por identidad y no por ventana.
+
+Las identidades exentas viven en `identidades_prueba` (RUT ya normalizado, sin
+puntos ni guión):
+
+```sql
+insert into public.identidades_prueba (clase, valor, nota)
+values ('email', 'quien@agenciavs.cl', 'Segunda dirección del equipo');
+```
+
+### Dos excepciones a reglas duras
+
+`purgar_pruebas` **borra** filas de `inscripciones`, contra la regla 4. Está
+acotado en el SQL —solo `es_prueba`, y nunca las que quedaron dentro de un
+sorteo real ya ejecutado, cuyo pool y complemento están congelados—; esas se
+informan como conservadas en vez de callarse. Y `solo_append` deja borrar la
+auditoría de un sorteo marcado como prueba, y solo la de esos: la alternativa
+era desactivar el trigger a mano, que desprotege la tabla entera mientras dure.
+
+### Limpiar a mano
+
+No hace falta bajar la RLS de nada, y no conviene: es forzada y sin políticas a
+propósito. Desde el editor SQL del dashboard —que corre con privilegios que la
+saltan— basta invocar la misma RPC:
+
+```sql
+select * from public.purgar_pruebas();
+```
+
 ## Verificación
 
 El esquema se probó contra PostgreSQL 16 antes de entregarlo:
@@ -108,3 +180,24 @@ concede EXECUTE a `anon` sobre cada función nueva—:
   `premiados_duplicados()` viene vacío.
 - Con USAGE en el esquema, como en Supabase, `anon` sigue sin alcanzar ninguna
   función ni tabla del panel; `authenticated` alcanza todo lo que el panel usa.
+
+El modo pruebas se verificó igual, con las doce migraciones aplicadas en orden
+sobre PostgreSQL 16 y los roles de Supabase reproducidos:
+
+- Fuera de toda ventana el alta responde `sin_jornada`; con el modo abierto, la
+  misma llamada crea la inscripción en la jornada de ensayo.
+- El RUT `11.111.111-1` y el correo del equipo se inscriben cuatro veces
+  seguidas; un RUT cualquiera choca a la segunda con `duplicado_rut`.
+- El ensayo se sortea sin esperar a que cierre su ventana, `verificar_sorteo` y
+  `verificar_membresia` dan `true`, y `premiados_duplicados()` viene vacío.
+- Una fila de prueba dentro de una jornada REAL queda fuera del pool con motivo
+  `prueba` y la membresía sigue completa.
+- `cerrar_pruebas` cierra la ventana también cuando el ensayo ya se sorteó, y
+  reabrir sin purgar se niega con un mensaje que dice qué hacer.
+- Con la jornada del viernes en curso, `abrir_pruebas` se niega; en cambio el
+  RUT del equipo se inscribe dos veces seguidas dentro de esa jornada real,
+  marcado `es_prueba` y sin aparecer en ninguna cifra.
+- La purga deja la base en cero inscripciones y sin sorteos de prueba;
+  la auditoría de un sorteo real sigue sin dejarse actualizar ni borrar.
+- `anon` no alcanza `abrir_pruebas`, `cerrar_pruebas`, `purgar_pruebas` ni
+  `identidades_prueba`; sí `estado_publico`, que es un par de booleanos.

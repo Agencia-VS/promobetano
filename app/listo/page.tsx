@@ -7,6 +7,7 @@ import { Screen } from "@/components/Screen";
 import { Footer18 } from "@/components/Footer18";
 import { InfoBadge } from "@/components/InfoBadge";
 import { PasosPerfume, SelloConfirmado } from "@/components/Confirmacion";
+import { AvisoPruebas } from "@/components/AvisoPruebas";
 import { leeConfirmadoAhora, useConfirmado } from "@/lib/confirmado";
 import { CORREO_DATOS } from "@/lib/contacto";
 
@@ -50,6 +51,17 @@ export default function ListoPage() {
       poster={<SelloConfirmado email={confirmado?.email} />}
       accion={
         <>
+          {/* El alta fue un ensayo: se dice acá también. Esta es la pantalla que
+              la persona se lleva como prueba de que quedó inscrita, y el aviso
+              del formulario ya no está a la vista. Sale del payload del alta y
+              no del estado actual del modo: apagarlo después no convierte en
+              real una inscripción que se va a borrar. */}
+          {confirmado?.pruebas && (
+            <div style={{ marginTop: 24 }}>
+              <AvisoPruebas />
+            </div>
+          )}
+
           <div style={{ marginTop: 24 }}>
             <PasosPerfume />
           </div>

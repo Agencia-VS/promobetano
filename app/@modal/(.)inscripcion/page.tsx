@@ -24,7 +24,7 @@ export const dynamic = "force-dynamic";
 export default async function ModalInscripcionPage() {
   const h = await headers();
   const origen = h.get(HEADER_ORIGEN) ?? ORIGEN_DIRECTO;
-  const { estado, fuente } = await estadoVigente();
+  const { estado, fuente, pruebas } = await estadoVigente();
 
   if (estado !== "abierto") {
     const { titulo, detalle } = textoCierre(estado, fuente);
@@ -41,7 +41,7 @@ export default async function ModalInscripcionPage() {
     );
   }
 
-  return <ContenidoModalInscripcion origen={origen} />;
+  return <ContenidoModalInscripcion origen={origen} pruebas={pruebas} />;
 }
 
 const estiloTitulo: React.CSSProperties = {

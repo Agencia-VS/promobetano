@@ -211,12 +211,16 @@ export function FormularioInscripcion({
          * envío: quien manda el formulario a las 20:59:59 entra al sorteo de
          * esta noche, y recalcularlo dos segundos después diría el de mañana.
          */
-        const cuerpo = (await r.json().catch(() => ({}))) as { sorteo?: unknown };
+        const cuerpo = (await r.json().catch(() => ({}))) as {
+          sorteo?: unknown;
+          pruebas?: unknown;
+        };
         const sorteo = typeof cuerpo.sorteo === "string" ? cuerpo.sorteo : undefined;
+        const pruebas = cuerpo.pruebas === true;
         // Se guarda igual aunque no naveguemos: si después abre /listo por
         // historial o por el enlace de otro dispositivo, la pantalla tiene que
         // poder decirle a qué correo se mandó la confirmación.
-        guardaConfirmado({ email: correo, origen, sorteo });
+        guardaConfirmado({ email: correo, origen, sorteo, pruebas });
         pendiente.current = null;
         borraDraft();
         // Sin apagar `enviando`: tanto la navegación como el cambio de

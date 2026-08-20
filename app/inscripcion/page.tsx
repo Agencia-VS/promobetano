@@ -5,6 +5,7 @@ import { Screen } from "@/components/Screen";
 import { Lockup, BetanoLogo } from "@/components/Lockup";
 import { Footer18 } from "@/components/Footer18";
 import { Badge18 } from "@/components/Badge18";
+import { AvisoPruebas } from "@/components/AvisoPruebas";
 import { HEADER_ORIGEN, ORIGEN_DIRECTO } from "@/lib/origen";
 import { textoCierre } from "@/lib/concurso";
 import { estadoVigente } from "@/lib/concurso-servidor";
@@ -27,7 +28,7 @@ export const dynamic = "force-dynamic";
 export default async function InscripcionPage() {
   const h = await headers();
   const origen = h.get(HEADER_ORIGEN) ?? ORIGEN_DIRECTO;
-  const { estado, fuente } = await estadoVigente();
+  const { estado, fuente, pruebas } = await estadoVigente();
 
   if (estado !== "abierto") {
     const { titulo, detalle } = textoCierre(estado, fuente);
@@ -130,6 +131,10 @@ export default async function InscripcionPage() {
             >
               Un minuto y listo. La confirmación te llega al correo.
             </p>
+
+            {/* Va con el titular y no junto al botón: quien llega tiene que
+                leerlo antes de escribir su RUT, no después de escribirlo. */}
+            {pruebas && <AvisoPruebas />}
           </div>
         </div>
       }

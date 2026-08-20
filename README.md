@@ -53,6 +53,8 @@ movida.
 | `/api/inscripcion` | Alta: revalida en servidor y llama a la RPC `crear_inscripcion` |
 | `/api/cron/email` | Drenaje de `email_outbox` por lotes de 100 (Vercel Cron) |
 | `/api/admin/jornadas` | Lleva el calendario de `CONCURSO_SORTEOS` a las filas de `sorteos` |
+| `/api/admin/pruebas/modo` | Abre y cierra el ensayo en producción |
+| `/api/admin/pruebas/datos` | Borra los datos que dejó el ensayo |
 | `proxy.ts` | Exige la puerta 18+ y resuelve la atribución de panel |
 
 ## Decisiones que conviene conocer
@@ -76,6 +78,15 @@ prellenaba el de la siguiente. Ver `lib/inscripcion.ts`.
 por sobre la cookie, y el nombre visible sale de una lista blanca en
 `lib/origen.ts` (nunca del slug crudo, que viene de la URL). El valor por
 defecto es `directo`, no un panel real.
+
+**Se puede ensayar en producción sin ensuciar el sorteo.** «Pruebas en
+producción», en `/admin`, abre una ventana de ensayo con su propia jornada
+—encajada entre las reales y cerrada sola cuando la primera de verdad empieza—,
+marca cada fila que entre por ella y avisa en el formulario que esas
+inscripciones no participan. El RUT y el correo del equipo se inscriben sin
+límite; el resto sigue con una por jornada. «Borrar datos de prueba» los elimina
+enteros. Ninguna fila de ensayo entra al pool de un sorteo real ni cuenta en las
+cifras del panel. Ver `supabase/migrations/20260820120000_pruebas.sql`.
 
 **El halo de fondo es CSS**, reemplaza el `FONDO.png` de 2,1 MB, y no usa
 `filter: blur()` (forzaba una superficie offscreen de ~21 MB antes del primer

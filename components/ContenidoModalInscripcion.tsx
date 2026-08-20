@@ -7,6 +7,7 @@ import { BetanoLogo } from "./Lockup";
 import { FormularioInscripcion } from "./FormularioInscripcion";
 import { PasosPerfume, SelloConfirmado } from "./Confirmacion";
 import { InfoBadge } from "./InfoBadge";
+import { AvisoPruebas } from "./AvisoPruebas";
 import { CORREO_DATOS } from "@/lib/contacto";
 
 /**
@@ -21,7 +22,15 @@ import { CORREO_DATOS } from "@/lib/contacto";
  * La confirmación se compone con las mismas piezas que /listo, no con una copia
  * de su texto.
  */
-export function ContenidoModalInscripcion({ origen }: { origen: string }) {
+export function ContenidoModalInscripcion({
+  origen,
+  pruebas = false,
+}: {
+  origen: string;
+  /** Ensayo en curso: el aviso tiene que aparecer también acá. Esta superficie
+      no puede callar lo que dice la ruta completa. */
+  pruebas?: boolean;
+}) {
   const router = useRouter();
   const [correo, setCorreo] = useState<string | null>(null);
   const [sorteo, setSorteo] = useState<string | undefined>(undefined);
@@ -32,6 +41,10 @@ export function ContenidoModalInscripcion({ origen }: { origen: string }) {
         <div id="modal-titulo">
           <SelloConfirmado email={correo} compacto />
         </div>
+
+        {/* También en la confirmación: es la pantalla que la persona se lleva
+            como prueba de que quedó inscrita, y en un ensayo no quedó. */}
+        {pruebas && <AvisoPruebas />}
 
         <PasosPerfume compacto />
 
@@ -92,6 +105,8 @@ export function ContenidoModalInscripcion({ origen }: { origen: string }) {
           Un minuto y listo. La confirmación te llega al correo.
         </p>
       </div>
+
+      {pruebas && <AvisoPruebas />}
 
       <FormularioInscripcion
         origen={origen}

@@ -11,6 +11,10 @@ import {
 import { Barra } from "@/components/admin/Barra";
 import { InterruptorConcurso } from "@/components/admin/InterruptorConcurso";
 import { PanelSorteos, type Sorteo } from "@/components/admin/PanelSorteos";
+import {
+  ModoPruebas,
+  type IdentidadPrueba,
+} from "@/components/admin/ModoPruebas";
 import { PruebaCorreo } from "@/components/admin/PruebaCorreo";
 import { CORREO_DATOS_SIN_CONFIGURAR } from "@/lib/contacto";
 
@@ -31,6 +35,12 @@ type Resumen = {
   con_marketing: number;
   rebotes: number;
   quejas: number;
+  /**
+   * Inscripciones de ensayo. Ninguna de las cifras de arriba las cuenta, así
+   * que esta es la única forma de saber que hay datos de prueba esperando a que
+   * alguien los borre.
+   */
+  pruebas?: number;
 };
 
 type PorPanel = { origen: string; total: number; elegibles: number };
@@ -43,6 +53,8 @@ type Jornada = {
   ventana_desde: string;
   ventana_hasta: string;
   inscritos: number;
+  pruebas: number;
+  es_prueba: boolean;
   vigente: boolean;
 };
 
@@ -64,14 +76,27 @@ export default async function AdminPage() {
   const { supabase, usuario } = await usuarioAdmin();
   if (!supabase || !usuario) redirect("/admin/login");
 
-  const [estadoRes, resumenRes, panelesRes, sorteosRes, jornadasRes] =
-    await Promise.all([
-      estadoVigente(),
-      supabase.rpc("resumen_inscripciones"),
-      supabase.rpc("resumen_por_panel"),
-      supabase.rpc("listar_sorteos"),
-      supabase.rpc("resumen_jornadas"),
-    ]);
+  const [
+    estadoRes,
+    resumenRes,
+    panelesRes,
+    sorteosRes,
+    jornadasRes,
+    identidadesRes,
+    publicoRes,
+  ] = await Promise.all([
+    estadoVigente(),
+    supabase.rpc("resumen_inscripciones"),
+    supabase.rpc("resumen_por_panel"),
+    supabase.rpc("listar_sorteos"),
+    supabase.rpc("resumen_jornadas"),
+    supabase.rpc("listar_identidades_prueba"),
+    // El interruptor de ensayo CRUDO. `estadoRes.pruebas` es el derivado —«un
+    // alta de ahora sería de ensayo»—, que es lo correcto para el sitio público
+    // pero deja el botón de cerrar inhabilitado justo cuando hace falta: con el
+    // modo encendido y una jornada real corriendo.
+    supabase.rpc("estado_publico"),
+  ]);
 
   const resumen = (
     Array.isArray(resumenRes.data) ? resumenRes.data[0] : resumenRes.data
@@ -79,6 +104,11 @@ export default async function AdminPage() {
   const paneles = (panelesRes.data ?? []) as PorPanel[];
   const sorteos = (sorteosRes.data ?? []) as Sorteo[];
   const jornadas = (jornadasRes.data ?? []) as Jornada[];
+  const identidades = (identidadesRes.data ?? []) as IdentidadPrueba[];
+  const publico = (
+    Array.isArray(publicoRes.data) ? publicoRes.data[0] : publicoRes.data
+  ) as { modo_pruebas?: boolean } | null;
+  const modoPruebas = publico?.modo_pruebas === true;
 
   const desde = inicio();
   const hasta = cierre();
@@ -98,7 +128,9 @@ export default async function AdminPage() {
    */
   const problemas = problemasCalendario();
   const jornadaAhora = jornadaDe();
-  const jornadaEnBase = jornadas.find((j) => j.vigente) ?? null;
+  // La jornada de ensayo NO cuenta como «la base está al día»: cubre este
+  // instante, pero es la de mentira, y si la real falta hay que verlo igual.
+  const jornadaEnBase = jornadas.find((j) => j.vigente && !j.es_prueba) ?? null;
   const faltaSincronizar = jornadaAhora !== null && jornadaEnBase === null;
 
   /*
@@ -195,6 +227,13 @@ export default async function AdminPage() {
             }}
           />
 
+          <ModoPruebas
+            activo={modoPruebas}
+            recibiendoAltas={estadoRes.pruebas}
+            identidades={identidades}
+            filasDePrueba={resumen?.pruebas ?? 0}
+          />
+
           <div className="tarjeta">
             <h2 className="tarjeta__titulo">Inscripciones</h2>
             {resumen ? (
@@ -208,6 +247,12 @@ export default async function AdminPage() {
                 <Cifra valor={resumen.con_marketing} nombre="Marketing" />
                 <Cifra valor={resumen.rebotes} nombre="Rebotes" />
                 <Cifra valor={resumen.quejas} nombre="Quejas" />
+                {/* Se pinta solo cuando hay: en la activación real es siempre
+                    cero y una cifra fija en cero es ruido. Cuando aparece, es
+                    un recordatorio de que falta limpiar. */}
+                {(resumen.pruebas ?? 0) > 0 && (
+                  <Cifra valor={resumen.pruebas} nombre="Pruebas" />
+                )}
               </div>
             ) : (
               <p className="vacio">Sin datos todavía.</p>
@@ -243,11 +288,27 @@ export default async function AdminPage() {
                               <span className="pastilla">en curso</span>
                             </>
                           ) : null}
+                          {j.es_prueba ? (
+                            <>
+                              {" "}
+                              <span className="pastilla pastilla--declinado">
+                                ensayo
+                              </span>
+                            </>
+                          ) : null}
                         </td>
                         <td className="tabla__tenue">
                           {RELOJ.format(new Date(j.ventana_hasta))}
                         </td>
-                        <td>{j.inscritos.toLocaleString("es-CL")}</td>
+                        <td>
+                          {j.inscritos.toLocaleString("es-CL")}
+                          {j.pruebas > 0 ? (
+                            <span className="tabla__tenue">
+                              {" "}
+                              +{j.pruebas} de prueba
+                            </span>
+                          ) : null}
+                        </td>
                         <td>
                           <span className="pastilla">{j.estado}</span>
                         </td>

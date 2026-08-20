@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
   // Se comprueba acá y no solo en la página: quien tenga el formulario abierto
   // desde antes del cierre —o desde antes de que alguien lo cierre a mano—
   // puede enviarlo igual.
-  const { estado } = await estadoVigente(new Date(), { fresco: true });
+  const { estado, pruebas } = await estadoVigente(new Date(), { fresco: true });
   if (estado !== "abierto") {
     return NextResponse.json({ error: "cerrado" }, { status: 409 });
   }
@@ -103,7 +103,17 @@ export async function POST(request: NextRequest) {
        */
       const jornada = jornadaDe(new Date());
       return NextResponse.json(
-        { ok: true, sorteo: jornada ? etiquetaJornada(jornada) : null },
+        {
+          ok: true,
+          sorteo: jornada ? etiquetaJornada(jornada) : null,
+          /*
+           * Si el alta fue un ensayo. Viaja en la respuesta y no lo consulta la
+           * pantalla de confirmación por su cuenta: para cuando esa pantalla se
+           * pinta, el modo pruebas puede haberse apagado ya, y entonces le diría
+           * «quedaste dentro» a una fila que se va a borrar.
+           */
+          pruebas,
+        },
         { status: 201 },
       );
     }

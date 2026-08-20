@@ -11,6 +11,8 @@ export type Sorteo = {
   estado: string;
   /** 'jornada' saca el pool de inscripciones.sorteo_id; 'ventana', del creado_at. */
   criterio: string;
+  /** Ensayo. Se puede ejecutar con la ventana abierta y no cuenta para nada real. */
+  es_prueba: boolean;
   excluir_premiados: boolean;
   ventana_desde: string | null;
   ventana_hasta: string | null;
@@ -20,6 +22,8 @@ export type Sorteo = {
   ejecutado_at: string | null;
   /** Cuánta gente lleva la jornada. Es la cifra que se mira antes de las 21:00. */
   inscritos: number;
+  /** Inscripciones de ensayo. No están en `inscritos`: se cuentan aparte. */
+  pruebas: number;
   en_pool: number;
   excluidos: number;
   ganadores_vigentes: number;
@@ -157,7 +161,13 @@ export function PanelSorteos({ sorteos }: { sorteos: Sorteo[] }) {
        * aparte y queda registrado en la auditoría como forzado.
        */
       let forzar = false;
-      const abierta = s.ventana_hasta !== null && new Date(s.ventana_hasta) > new Date();
+      // Un ensayo se ejecuta cuando se aprieta el botón: la RPC no le exige que
+      // cierre la ventana, así que pedir el segundo consentimiento sería pedirlo
+      // por algo que no va a pasar.
+      const abierta =
+        !s.es_prueba &&
+        s.ventana_hasta !== null &&
+        new Date(s.ventana_hasta) > new Date();
       if (abierta) {
         if (
           !window.confirm(
@@ -320,7 +330,19 @@ export function PanelSorteos({ sorteos }: { sorteos: Sorteo[] }) {
             <tbody>
               {sorteos.map((s) => (
                 <tr key={s.id}>
-                  <td>{s.nombre}</td>
+                  <td>
+                    {s.nombre}
+                    {s.es_prueba ? (
+                      <>
+                        {" "}
+                        {/* La fila del ensayo se sienta arriba, entre las tres
+                            jornadas reales, así que tiene que distinguirse de un
+                            vistazo: ejecutarla creyendo que es el viernes sería
+                            un susto de los que no se deshacen. */}
+                        <span className="pastilla pastilla--declinado">ensayo</span>
+                      </>
+                    ) : null}
+                  </td>
                   {/* La ventana no se mostraba en ninguna parte, aunque es lo que
                       decide quién entra a cada sorteo. */}
                   <td className="tabla__tenue">
@@ -329,7 +351,12 @@ export function PanelSorteos({ sorteos }: { sorteos: Sorteo[] }) {
                   <td>
                     <span className="pastilla">{s.estado}</span>
                   </td>
-                  <td>{s.criterio === "jornada" ? s.inscritos : "—"}</td>
+                  <td>
+                    {s.criterio === "jornada" ? s.inscritos : "—"}
+                    {s.pruebas > 0 ? (
+                      <span className="tabla__tenue"> +{s.pruebas} de prueba</span>
+                    ) : null}
+                  </td>
                   <td>
                     {s.estado === "ejecutado"
                       ? s.excluidos > 0
