@@ -9,7 +9,6 @@ import { AvisoPruebas } from "@/components/AvisoPruebas";
 import { HEADER_ORIGEN, ORIGEN_DIRECTO } from "@/lib/origen";
 import { textoCierre } from "@/lib/concurso";
 import { estadoVigente } from "@/lib/concurso-servidor";
-import { CORREO_DATOS } from "@/lib/contacto";
 
 // La ventana se evalúa contra el reloj de cada visita: esta ruta no puede
 // prerenderizarse ni quedar cacheada, o seguiría aceptando inscripciones un día
@@ -145,8 +144,8 @@ export default async function InscripcionPage() {
       accion={<FormularioInscripcion origen={origen} />}
       pie={
         <Footer18 topGap={8}>
-          Juega con responsabilidad. Consultas de datos personales:{" "}
-          <a href={`mailto:${CORREO_DATOS}`}>{CORREO_DATOS}</a>
+          Juega con responsabilidad. Solo mayores de 18 años.{" "}
+          <Link href="/bases">Bases y condiciones</Link>
         </Footer18>
       }
     />

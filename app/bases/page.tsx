@@ -1,7 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Badge18 } from "@/components/Badge18";
-import { CORREO_DATOS } from "@/lib/contacto";
 import { fechaYHora, jornadas } from "@/lib/concurso";
 import { supabasePublico } from "@/lib/supabase/publico";
 
@@ -44,10 +43,8 @@ export const metadata: Metadata = {
  *   · Juego responsable: se remite a un profesional de salud SIN dar un teléfono.
  *     Publicar un número equivocado en una cláusula legal es peor que no darlo; si
  *     el cliente entrega el canal oficial, va acá.
- *
- * El único dato que sigue viniendo del entorno es el contacto de datos
- * personales (NEXT_PUBLIC_CORREO_DATOS): mientras apunte a un dominio de la
- * RFC 2606 no hay a quién escribirle para ejercer los derechos de la §12.
+ *   · Las consultas y solicitudes sobre datos se reciben presencialmente en el
+ *     stand, sin publicar una casilla de soporte de Betano para esta activación.
  */
 
 // Las fechas salen primero de la configuración administrable de la base. Las
@@ -348,11 +345,11 @@ export default async function BasesPage() {
         Conforme a la Ley N° 19.628 vigente, el participante puede solicitar
         información sobre sus datos y su tratamiento, pedir la modificación o
         actualización de datos inexactos y, cuando corresponda legalmente, su
-        eliminación o bloqueo. Para ejercer estos derechos puede escribir a{" "}
-        <a href={`mailto:${CORREO_DATOS}`}>{CORREO_DATOS}</a>, indicando su
-        nombre y RUT para verificar su identidad. La solicitud se responderá
-        conforme al procedimiento y dentro de los plazos establecidos por la
-        normativa vigente.
+        eliminación o bloqueo. Para ejercer estos derechos puede solicitar
+        atención presencial al equipo responsable en el stand de la Activación,
+        indicando su nombre y RUT para verificar su identidad. La solicitud se
+        atenderá conforme al procedimiento y dentro de los plazos establecidos
+        por la normativa vigente.
         <br />
         <br />
         La Ley N° 21.719, que introduce un nuevo régimen de protección de datos

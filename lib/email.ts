@@ -1,5 +1,4 @@
 import { MARCA } from "./marca.ts";
-import { CORREO_DATOS } from "./contacto.ts";
 import { diaSorteo } from "./concurso.ts";
 import { urlAbsoluta } from "./sitio.ts";
 
@@ -104,13 +103,11 @@ function hilo(): string {
 /** Pie legal. Las dos frases son obligatorias en toda pieza de la campaña. */
 function pie(): string {
   return `<tr><td class="e-pie" style="padding:22px 32px 8px;font-family:${TIPOGRAFIA};font-size:12px;line-height:1.6;color:rgba(249,241,233,.6);">
-Solo mayores de 18 años. Juega con responsabilidad.<br>
-Consultas sobre tus datos: <a href="mailto:${CORREO_DATOS}" style="color:${MARCA.bone};">${CORREO_DATOS}</a>
+Solo mayores de 18 años. Juega con responsabilidad.
 </td></tr>`;
 }
 
-const PIE_TEXTO = `Solo mayores de 18 años. Juega con responsabilidad.
-Consultas sobre tus datos: ${CORREO_DATOS}`;
+const PIE_TEXTO = "Solo mayores de 18 años. Juega con responsabilidad.";
 
 /**
  * Antetítulo: versalitas con tracking ancho, en naranja. Es el recurso que en
@@ -333,8 +330,7 @@ function ganaste(
 ${bloqueFolio}
 <p style="margin:0;font-size:15px;line-height:1.6;color:${CUERPO};">${omision}</p>
 <p style="margin:32px 0 0;padding-top:20px;border-top:1px solid ${MARCA.rust};font-size:12px;line-height:1.6;color:rgba(249,241,233,.6);">
-Solo mayores de 18 años. Juega con responsabilidad.<br>
-Consultas sobre tus datos: <a href="mailto:${CORREO_DATOS}" style="color:${MARCA.bone};">${CORREO_DATOS}</a>
+Solo mayores de 18 años. Juega con responsabilidad.
 </p>
 </div>
 </body></html>`,

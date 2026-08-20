@@ -2,7 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Campo, Casilla, bordeCampo, inputStyle } from "./Campo";
+import {
+  Campo,
+  Casilla,
+  MensajeError,
+  bordeCampo,
+  inputStyle,
+  sombraCampo,
+} from "./Campo";
 import { formateaRut } from "@/lib/rut";
 import {
   VALORES_INICIALES,
@@ -16,7 +23,6 @@ import {
   type InscripcionValues,
 } from "@/lib/inscripcion";
 import { guardaConfirmado, type Confirmado } from "@/lib/confirmado";
-import { CORREO_DATOS } from "@/lib/contacto";
 
 const CAMPOS_TEXTO: CampoTexto[] = ["nombre", "email", "tel", "rut"];
 const DEBOUNCE_MS = 400;
@@ -48,9 +54,9 @@ function mensajeDeFalla(codigo: unknown): string {
       // no de la persona, y el reintento más tarde puede funcionar.
       return "Las inscripciones están en pausa. Vuelve a escanear el código en un rato.";
     case "vetado":
-      // Baja por incumplimiento de las bases. El motivo no se explica acá, pero
-      // se deja una vía para reclamar en vez de un muro.
-      return `No pudimos registrar esta inscripción. Si crees que es un error, escríbenos a ${CORREO_DATOS}.`;
+      // La activación y la entrega son presenciales: cualquier revisión se
+      // resuelve con el equipo del stand, sin publicar una casilla de soporte.
+      return "No pudimos registrar esta inscripción. Si crees que es un error, acércate al equipo del stand.";
     default:
       return "No pudimos inscribirte. Toca de nuevo para reintentar.";
   }
@@ -91,6 +97,7 @@ export function FormularioInscripcion({
   // Fallo del envío, distinto de los errores por campo: no lo produce un dato
   // malo sino la red o el servidor, y se resuelve reintentando.
   const [falla, setFalla] = useState<string | null>(null);
+  const formulario = useRef<HTMLFormElement | null>(null);
 
   const pendiente = useRef<InscripcionValues | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -184,6 +191,16 @@ export function FormularioInscripcion({
     const errores = valida(v);
     if (Object.keys(errores).length) {
       setE(errores);
+      // En un teléfono la persona suele enviar desde el final del formulario.
+      // Tras pintar los errores, la llevamos al primero para que no tenga que
+      // adivinar qué ocurrió ni buscar varios pantallazos más arriba.
+      requestAnimationFrame(() => {
+        const primero = formulario.current?.querySelector<HTMLElement>(
+          '[aria-invalid="true"]',
+        );
+        primero?.focus({ preventScroll: true });
+        primero?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
       return;
     }
     setE({});
@@ -266,7 +283,7 @@ export function FormularioInscripcion({
   }
 
   return (
-    <form onSubmit={enviar}>
+    <form ref={formulario} onSubmit={enviar}>
       {/* El fieldset deshabilitado congela TODO el formulario durante el
           envío, no solo el botón. */}
       <fieldset
@@ -322,6 +339,7 @@ export function FormularioInscripcion({
                 background: "var(--color-bone)",
                 borderRadius: 4,
                 border: bordeCampo(Boolean(e.tel)),
+                boxShadow: sombraCampo(Boolean(e.tel)),
                 overflow: "hidden",
               }}
             >
@@ -410,18 +428,7 @@ export function FormularioInscripcion({
             </Casilla>
           </div>
           {e.legal && (
-            <span
-              id="legal-error"
-              role="alert"
-              style={{
-                fontSize: 12.5,
-                fontWeight: 500,
-                color: "var(--color-rust-deep)",
-                paddingBottom: 6,
-              }}
-            >
-              {e.legal}
-            </span>
+            <MensajeError id="legal-error">{e.legal}</MensajeError>
           )}
         </div>
 
