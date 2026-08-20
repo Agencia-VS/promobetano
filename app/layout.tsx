@@ -6,6 +6,10 @@ export const metadata: Metadata = {
   title: "Eau de Confianza — Betano x Cristián Riquelme",
   description:
     "Hay un aroma para el momento en que decides confiar en ti. Inscríbete y entra al sorteo.",
+  icons: {
+    icon: "/brand/isoBetano.png",
+    apple: "/brand/isoBetano.png",
+  },
 };
 
 export const viewport: Viewport = {
