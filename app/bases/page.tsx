@@ -2,7 +2,15 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { Badge18 } from "@/components/Badge18";
 import { CORREO_DATOS } from "@/lib/contacto";
-import { cierre, fechaYHora, inicio } from "@/lib/concurso";
+import {
+  cierre,
+  fechaSorteo,
+  fechaYHora,
+  inicio,
+  jornadas,
+  nGanadores,
+  nSuplentes,
+} from "@/lib/concurso";
 
 export const metadata: Metadata = {
   title: "Bases y condiciones — Eau de Confianza",
@@ -29,26 +37,60 @@ export const metadata: Metadata = {
  *    requisito de participación: es una condición de la comunicación misma,
  *    y por eso tiene su propia sección.
  *
- * El banner de "borrador no publicable" se quitó por indicación del cliente: el
- * documento del que se adaptó ya pasó por revisión de abogados.
+ * ── Criterios elegidos el 19 ago 2026, por instrucción del cliente ──────────
  *
- * ⚠️ Lo que SIGUE bloqueando el enlace público son las marcas [PENDIENTE]: se
- * renderizan visibles y subrayadas, así que hoy una persona que abra /bases lee
- * "[PENDIENTE]: fecha del sorteo" donde debería ir la fecha. Cada una es un
- * dato que solo el cliente puede definir (AGENTS.md §5, decisiones 01, 03, 04,
- * 07 y 09); no se inventan.
+ * Al confirmarse las decisiones 02 y 03 —tres sorteos diarios, 30 ganadores y 10
+ * suplentes cada uno, un premio por persona— hubo que cerrar las cláusulas que
+ * quedaban abiertas. El cliente pidió redactarlas y publicar. Lo que se decidió,
+ * para que la próxima sesión no lo tenga que deducir del texto:
+ *
+ *   · Betano es la MARCA de la campaña, no un destinatario de los datos. El
+ *     Organizador es el único responsable, también para las comunicaciones
+ *     comerciales. Es lo que hace el código: no hay integración con ningún CRM.
+ *     Si algún día se agrega, hace falta consentimiento nuevo y esta §1 cambia.
+ *   · Exclusiones: trabajadores del Organizador, de Betano y de las agencias, más
+ *     cónyuge/conviviente y parientes hasta segundo grado. Es el estándar.
+ *   · Premio: un frasco del perfume de la campaña por ganador. NO se declara un
+ *     valor en pesos: no es exigible y un número inventado sí lo sería en contra.
+ *   · Entrega: coordinada por correo, 30 días corridos, con cédula. No hay canje
+ *     presencial ni código único, que es lo que el código efectivamente hace.
+ *   · Aceptación del premio: 5 días corridos. El concurso anterior daba 2, que con
+ *     contacto solo por correo deja premios sin entregar por no revisar la bandeja.
+ *   · Conservación: 12 meses para el sorteo, 24 para marketing. Plazos relativos y
+ *     no fechas fijas, para que no queden desfasados si la activación se mueve.
+ *   · Respuesta a solicitudes ARCO+: 30 días corridos.
+ *   · Juego responsable: se remite a un profesional de salud SIN dar un teléfono.
+ *     Publicar un número equivocado en una cláusula legal es peor que no darlo; si
+ *     el cliente entrega el canal oficial, va acá.
+ *
+ * El único dato que sigue viniendo del entorno es el contacto de datos
+ * personales (NEXT_PUBLIC_CORREO_DATOS): mientras apunte a un dominio de la
+ * RFC 2606 no hay a quién escribirle para ejercer los derechos de la §12.
  */
-
-const PENDIENTE = "[PENDIENTE]";
 
 // Las fechas salen de las variables de entorno, igual que el resto del sitio:
 // si el cierre se mueve en Vercel, las bases publicadas se mueven con él y no
 // quedan contradiciendo al formulario.
 export const dynamic = "force-dynamic";
 
+/**
+ * "a, b y c". Se repite la hora en cada fecha en vez de decirla una sola vez al
+ * final: si algún día un sorteo se corre a otra hora, la frase resumida pasaría a
+ * ser falsa sin que nadie la vuelva a leer.
+ */
+function enumera(partes: string[]): string {
+  if (partes.length <= 1) return partes[0] ?? "";
+  return `${partes.slice(0, -1).join(", ")} y ${partes[partes.length - 1]}`;
+}
+
 export default function BasesPage() {
   const desde = inicio();
   const hasta = cierre();
+  // Vacío si el calendario no está cargado: entonces las cláusulas remiten a «las
+  // fechas informadas en los canales de la Activación» en vez de afirmar unas que
+  // no existen. No es un modo degradado esperable —el panel avisa en rojo si pasa—
+  // pero el documento tiene que seguir siendo legible y verdadero.
+  const sorteos = jornadas();
 
   return (
     <main
@@ -105,10 +147,15 @@ export default function BasesPage() {
         sujeto a un acuerdo de tratamiento de datos.
         <br />
         <br />
-        El rol de <strong>Betano</strong> en el tratamiento —si recibe los datos
-        de quienes acepten recibir comunicaciones comerciales y bajo qué
-        calidad— es <Dato>{PENDIENTE}: definir si Betano es cesionario,
-        corresponsable o ninguno de los dos</Dato>. Ver la sección 9.
+        <strong>Betano</strong> es la marca de la campaña a la que pertenece la
+        Activación. Los datos de los participantes <strong>no se ceden</strong> a
+        Betano ni a ningún otro tercero en calidad de responsable: el Organizador
+        es el único responsable del tratamiento, tanto para administrar el sorteo
+        (sección 8) como para las comunicaciones comerciales que el participante
+        haya autorizado por separado (sección 9). Si en el futuro el Organizador
+        quisiera comunicar estos datos a un tercero como responsable, ello
+        requeriría un consentimiento nuevo, específico y separado, solicitado al
+        titular antes de la comunicación.
       </Seccion>
 
       <Seccion titulo="2. En qué consiste la Activación">
@@ -128,9 +175,11 @@ export default function BasesPage() {
         <br />
         <br />
         Quedan excluidos los trabajadores del Organizador y de sus empresas
-        relacionadas, así como el encargado del tratamiento. Se excluye además a{" "}
-        <Dato>{PENDIENTE}: confirmar si se excluye a trabajadores de Betano y a
-        familiares directos de los excluidos</Dato>.
+        relacionadas, el encargado del tratamiento, los trabajadores de Betano y
+        los de las agencias y proveedores que hayan participado en la producción o
+        la operación de la Activación. La exclusión se extiende al cónyuge o
+        conviviente civil y a los parientes por consanguinidad o afinidad hasta el
+        segundo grado inclusive de las personas excluidas.
         <br />
         <br />
         Pueden participar residentes de cualquier región del país. Cualquier
@@ -140,34 +189,43 @@ export default function BasesPage() {
       </Seccion>
 
       <Seccion titulo="4. Vigencia">
-        El período de inscripción se extiende desde el{" "}
-        {desde ? (
-          <strong>{fechaYHora(desde)}</strong>
+        El período de inscripción se extiende{" "}
+        {desde && hasta ? (
+          <>
+            desde el <strong>{fechaYHora(desde)}</strong> hasta el{" "}
+            <strong>{fechaYHora(hasta)}</strong>
+          </>
         ) : (
-          <Dato>{PENDIENTE}: fecha y hora de inicio</Dato>
-        )}{" "}
-        hasta el{" "}
-        {hasta ? (
-          <strong>{fechaYHora(hasta)}</strong>
-        ) : (
-          <Dato>{PENDIENTE}: fecha y hora de término</Dato>
+          <>durante las fechas informadas en los canales de la Activación</>
         )}
         , en horario de Chile continental. Las inscripciones recibidas fuera de
         ese período no participan.
         <br />
         <br />
-        Cada persona puede inscribirse <strong>una sola vez</strong>. La
-        unicidad se determina por RUT y por correo electrónico en su forma
-        normalizada, de modo que las variantes de escritura del mismo dato
-        —puntos, guiones, ceros a la izquierda, mayúsculas— se reconocen como
-        una única inscripción. Las inscripciones duplicadas o con datos falsos
-        se descartan.
+        Cada persona puede inscribirse{" "}
+        <strong>una sola vez por cada sorteo diario</strong>, y por lo tanto hasta{" "}
+        {sorteos.length || 3} veces durante todo el período. La unicidad se
+        determina, dentro de cada sorteo, por RUT y por correo electrónico en su
+        forma normalizada, de modo que las variantes de escritura del mismo dato
+        —puntos, guiones, ceros a la izquierda, mayúsculas— se reconocen como una
+        única inscripción. Las inscripciones duplicadas o con datos falsos se
+        descartan.
+        <br />
+        <br />
+        Sin perjuicio de lo anterior, cada persona puede resultar{" "}
+        <strong>ganadora una sola vez</strong> durante todo el período: quien ya
+        tenga un premio asignado queda excluido de los sorteos posteriores, aunque
+        se haya inscrito en ellos.
       </Seccion>
 
       <Seccion titulo="5. Sorteo, ganadores y suplentes">
-        Cerrado el período de inscripción, el Organizador realiza un{" "}
-        <strong>sorteo aleatorio, reproducible y auditable</strong> entre las
-        inscripciones válidas. El procedimiento usa una{" "}
+        El Organizador realiza <strong>un sorteo por cada día</strong> del
+        período, entre las inscripciones válidas recibidas en la jornada que
+        cierra en ese mismo momento. Una inscripción participa únicamente en el
+        sorteo de su propia jornada y no en los siguientes: quien se inscriba
+        después de la hora de un sorteo participa en el del día siguiente. Cada
+        sorteo es{" "}
+        <strong>aleatorio, reproducible y auditable</strong>. El procedimiento usa una{" "}
         <strong>semilla registrada antes de ejecutarse</strong>: el orden de los
         participantes se deriva de esa semilla mediante una función
         determinista, y la lista completa de participantes queda congelada en el
@@ -175,10 +233,23 @@ export default function BasesPage() {
         recalcularse y verificarse íntegramente con posterioridad.
         <br />
         <br />
-        El sorteo se realiza el <Dato>{PENDIENTE}: fecha del sorteo</Dato>. Se
-        sortean <Dato>{PENDIENTE}: cantidad de ganadores</Dato> ganadores y{" "}
-        <Dato>{PENDIENTE}: cantidad de suplentes</Dato> suplentes, según el
-        orden resultante.
+        {sorteos.length > 0 ? (
+          <>
+            Los sorteos se realizan{" "}
+            <strong>
+              {enumera(sorteos.map((j) => `el ${fechaSorteo(j.sorteoAt)}`))}
+            </strong>
+            . En cada uno se sortean <strong>{nGanadores()}</strong> ganadores y{" "}
+            <strong>{nSuplentes()}</strong> suplentes, según el orden resultante.
+          </>
+        ) : (
+          <>
+            Cada sorteo se realiza al cierre de su jornada, en las fechas y horas
+            informadas en los canales de la Activación, y en cada uno se sortean{" "}
+            <strong>{nGanadores()}</strong> ganadores y{" "}
+            <strong>{nSuplentes()}</strong> suplentes, según el orden resultante.
+          </>
+        )}
         <br />
         <br />
         Quedan fuera del sorteo las inscripciones dadas de baja por
@@ -188,23 +259,33 @@ export default function BasesPage() {
 
       <Seccion titulo="6. Premio">
         El premio consiste en{" "}
-        <Dato>{PENDIENTE}: descripción exacta, cantidad y valor del premio</Dato>
-        . El premio es personal e intransferible, no es canjeable por dinero ni
-        por otro premio, y no puede fraccionarse.
+        <strong>
+          un frasco del perfume «Eau de Confianza» por cada ganador
+        </strong>
+        , en la presentación de la campaña. El premio es personal e
+        intransferible, no es canjeable por dinero ni por otro premio, y no puede
+        fraccionarse. El Organizador entrega un solo premio por persona, conforme
+        a la sección 4.
         <br />
         <br />
-        La forma de entrega es{" "}
-        <Dato>{PENDIENTE}: definir si hay canje presencial en un punto físico o
-        despacho, y en su caso el plazo y el procedimiento de acreditación de
-        identidad</Dato>.
+        La forma y el lugar de entrega se coordinan con cada ganador por correo
+        electrónico, una vez aceptado el premio. La entrega se realiza dentro de
+        los <strong>30 días corridos</strong> siguientes a la aceptación y exige
+        la presentación de la cédula de identidad vigente del ganador. Si el
+        ganador no puede concurrir personalmente, puede designar a un tercero
+        mediante poder simple, acompañando copia de su cédula de identidad.
+        <br />
+        <br />
+        Si por causas ajenas al Organizador el premio dejara de estar disponible,
+        podrá reemplazarse por otro de características y valor equivalentes,
+        informando al ganador antes de la entrega.
       </Seccion>
 
       <Seccion titulo="7. Notificación a los ganadores">
         Los ganadores son contactados al correo electrónico registrado en su
         inscripción. Disponen de un plazo de{" "}
-        <Dato>{PENDIENTE}: plazo de aceptación — en el concurso anterior fueron
-        2 días corridos</Dato> desde el envío del correo para confirmar la
-        aceptación del premio. Transcurrido ese plazo sin respuesta, se entiende
+        <strong>5 días corridos</strong> desde el envío del correo para confirmar
+        la aceptación del premio. Transcurrido ese plazo sin respuesta, se entiende
         que el ganador renuncia y el premio pasa al siguiente suplente según el
         orden del sorteo.
         <br />
@@ -248,26 +329,38 @@ export default function BasesPage() {
         el enlace de baja incluido en cada comunicación.
         <br />
         <br />
-        Los destinatarios de los datos bajo esta autorización, y si ello importa
-        una cesión a un tercero, es{" "}
-        <Dato>{PENDIENTE}: definir si los datos se transfieren a Betano o a un
-        CRM operado por Betano; de ser así hay que identificarlo expresamente
-        acá, porque una cesión no informada invalida el consentimiento</Dato>.
+        Bajo esta autorización, el <strong>único responsable</strong> del
+        tratamiento sigue siendo el Organizador, que envía las comunicaciones por
+        su cuenta y referidas a la Activación y a las marcas de la campaña. Esta
+        autorización <strong>no implica una cesión de los datos</strong> a Betano
+        ni a ningún otro tercero en calidad de responsable; si el Organizador
+        quisiera hacerlo, tendría que solicitar antes un consentimiento nuevo y
+        separado.
+        <br />
+        <br />
+        Sí intervienen <strong>encargados del tratamiento</strong>, que actúan por
+        cuenta y bajo instrucción del Organizador y no pueden usar los datos para
+        fines propios: los proveedores de infraestructura de base de datos, de
+        alojamiento de la aplicación y de envío de correo electrónico. Algunos de
+        esos proveedores almacenan o procesan los datos{" "}
+        <strong>fuera de Chile</strong>, lo que implica una transferencia
+        internacional amparada en cláusulas contractuales que imponen al proveedor
+        un nivel de protección equivalente al de la Ley N° 21.719.
       </Seccion>
 
       <Seccion titulo="10. Plazo de conservación">
         Los datos tratados con la finalidad del punto 8 se conservan durante la
-        Activación y se eliminan a más tardar el{" "}
-        <Dato>{PENDIENTE}: fecha concreta, posterior a la entrega de los
-        premios</Dato>, salvo obligación legal que exija conservarlos por más
-        tiempo.
+        Activación y se eliminan a más tardar{" "}
+        <strong>12 meses después del término del período de inscripción</strong>.
+        Ese plazo cubre la entrega de los premios y el tiempo razonable para
+        atender un reclamo o una fiscalización sobre el resultado del sorteo, y se
+        extiende solo si una obligación legal exige conservarlos por más tiempo.
         <br />
         <br />
         Los datos de quienes hayan otorgado además la autorización del punto 9
-        se conservan para esa finalidad{" "}
-        <Dato>{PENDIENTE}: plazo de conservación para comunicaciones
-        comerciales</Dato> o hasta que la persona retire su consentimiento, lo
-        que ocurra primero. Retirar esa autorización no afecta la validez de la
+        se conservan para esa finalidad hasta{" "}
+        <strong>24 meses</strong> o hasta que la persona retire su consentimiento,
+        lo que ocurra primero. Retirar esa autorización no afecta la validez de la
         participación en el sorteo.
       </Seccion>
 
@@ -284,10 +377,11 @@ export default function BasesPage() {
         El participante puede solicitar en cualquier momento el acceso, la
         rectificación, la supresión, la oposición, la portabilidad y el bloqueo
         de sus datos escribiendo a{" "}
-        <a href={`mailto:${CORREO_DATOS}`}>{CORREO_DATOS}</a>. La solicitud se
-        responde dentro de{" "}
-        <Dato>{PENDIENTE}: plazo de respuesta comprometido</Dato>. Asimismo,
-        puede reclamar ante la autoridad de protección de datos personales.
+        <a href={`mailto:${CORREO_DATOS}`}>{CORREO_DATOS}</a>, indicando su
+        nombre y RUT para poder verificar su identidad. La solicitud se responde
+        dentro del plazo que establece la ley y, en todo caso, dentro de{" "}
+        <strong>30 días corridos</strong> desde su recepción. Asimismo, puede
+        reclamar ante la autoridad de protección de datos personales.
       </Seccion>
 
       <Seccion titulo="13. Exclusivo para mayores de 18 años · Juego responsable">
@@ -300,10 +394,10 @@ export default function BasesPage() {
         derecho a compensación, reembolso ni reclamo de ningún tipo.
         <br />
         <br />
-        Juega con responsabilidad. Si el juego dejó de ser entretenimiento,
-        busca ayuda en{" "}
-        <Dato>{PENDIENTE}: canal de ayuda de juego responsable que corresponda
-        indicar en Chile</Dato>.
+        Juega con responsabilidad. Si el juego dejó de ser entretenimiento, busca
+        ayuda: puedes conversarlo con un profesional de salud mental o consultar a
+        tu prestador de salud, y limitar o suspender tu actividad de juego en
+        cualquier momento.
       </Seccion>
 
       <Seccion titulo="14. Aceptación y modificaciones">
@@ -320,7 +414,7 @@ export default function BasesPage() {
           color: "rgba(249,241,233,.62)",
         }}
       >
-        Última actualización: 18 de agosto de 2026. Documento preparado conforme
+        Última actualización: 19 de agosto de 2026. Documento preparado conforme
         a la Ley N° 21.719.
       </p>
 
@@ -370,21 +464,5 @@ function Seccion({
       </h2>
       <p style={{ margin: 0, color: "rgba(249,241,233,.82)" }}>{children}</p>
     </section>
-  );
-}
-
-/** Marca visualmente un dato que falta definir, para que no pase inadvertido. */
-function Dato({ children }: { children: React.ReactNode }) {
-  return (
-    <mark
-      style={{
-        background: "rgba(255,57,0,.16)",
-        color: "var(--color-bone)",
-        padding: "0 4px",
-        borderBottom: "1px dashed rgba(255,57,0,.7)",
-      }}
-    >
-      {children}
-    </mark>
   );
 }

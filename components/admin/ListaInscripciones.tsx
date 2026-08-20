@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+/** Las jornadas para el desplegable. Llegan resueltas desde el servidor. */
+export type OpcionJornada = { id: number; nombre: string };
+
 type Fila = {
   id: number;
   creado_at: string;
@@ -13,6 +16,7 @@ type Fila = {
   elegible: boolean;
   email_estado: string;
   acepta_marketing: boolean;
+  sorteo_id: number;
 };
 
 type Cursor = { at: string; id: number } | null;
@@ -38,7 +42,11 @@ const FORMATO = new Intl.DateTimeFormat("es-CL", {
  * El buscador tiene debounce porque cada tecla sería una consulta de trigramas
  * sobre la tabla completa.
  */
-export function ListaInscripciones() {
+export function ListaInscripciones({
+  jornadas = [],
+}: {
+  jornadas?: OpcionJornada[];
+}) {
   const [filas, setFilas] = useState<Fila[]>([]);
   const [cursor, setCursor] = useState<Cursor>(null);
   const [hayMas, setHayMas] = useState(false);
@@ -47,13 +55,20 @@ export function ListaInscripciones() {
 
   const [buscar, setBuscar] = useState("");
   const [soloElegibles, setSoloElegibles] = useState<string>("");
+  const [jornada, setJornada] = useState<string>("");
 
   // Identifica la búsqueda vigente: una respuesta lenta de una búsqueda vieja
   // no debe pisar los resultados de la nueva.
   const peticion = useRef(0);
 
   const cargar = useCallback(
-    async (desde: Cursor, acumular: boolean, termino: string, elegibles: string) => {
+    async (
+      desde: Cursor,
+      acumular: boolean,
+      termino: string,
+      elegibles: string,
+      cualJornada: string,
+    ) => {
       const mia = ++peticion.current;
       setCargando(true);
       setError(null);
@@ -61,6 +76,7 @@ export function ListaInscripciones() {
       const p = new URLSearchParams();
       if (termino.trim()) p.set("buscar", termino.trim());
       if (elegibles) p.set("elegibles", elegibles);
+      if (cualJornada) p.set("jornada", cualJornada);
       if (desde) {
         p.set("cursor_at", desde.at);
         p.set("cursor_id", String(desde.id));
@@ -89,10 +105,14 @@ export function ListaInscripciones() {
 
   useEffect(() => {
     const t = setTimeout(() => {
-      void cargar(null, false, buscar, soloElegibles);
+      void cargar(null, false, buscar, soloElegibles, jornada);
     }, 300);
     return () => clearTimeout(t);
-  }, [buscar, soloElegibles, cargar]);
+  }, [buscar, soloElegibles, jornada, cargar]);
+
+  /** Nombre corto de la jornada de una fila. El id crudo no le dice nada a nadie. */
+  const nombreJornada = (id: number): string =>
+    jornadas.find((j) => j.id === id)?.nombre.replace(/^Sorteo del /, "") ?? "—";
 
   return (
     <div className="tarjeta">
@@ -109,6 +129,24 @@ export function ListaInscripciones() {
             spellCheck={false}
           />
         </label>
+        {/* Solo aparece si hay jornadas cargadas: en un proyecto recién montado
+            un desplegable vacío no explica nada. */}
+        {jornadas.length > 0 && (
+          <label className="campo">
+            <span>Jornada</span>
+            <select
+              value={jornada}
+              onChange={(e) => setJornada(e.target.value)}
+            >
+              <option value="">Todas</option>
+              {jornadas.map((j) => (
+                <option key={j.id} value={String(j.id)}>
+                  {j.nombre}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="campo">
           <span>Elegibilidad</span>
           <select
@@ -133,6 +171,7 @@ export function ListaInscripciones() {
           <thead>
             <tr>
               <th>Fecha</th>
+              <th>Jornada</th>
               <th>Nombre</th>
               <th>Correo</th>
               <th>Teléfono</th>
@@ -146,6 +185,10 @@ export function ListaInscripciones() {
             {filas.map((f) => (
               <tr key={f.id} style={{ opacity: f.elegible ? 1 : 0.45 }}>
                 <td>{FORMATO.format(new Date(f.creado_at))}</td>
+                {/* La fecha no dice la jornada: quien se inscribió el viernes a
+                    las 22:00 entra al sorteo del sábado, y leer solo la hora
+                    llevaría a contarlo en el día equivocado. */}
+                <td className="tabla__tenue">{nombreJornada(f.sorteo_id)}</td>
                 <td>{f.nombre}</td>
                 <td>{f.email}</td>
                 <td>+56 9 {f.telefono}</td>
@@ -179,7 +222,7 @@ export function ListaInscripciones() {
         <button
           type="button"
           className="btn"
-          onClick={() => void cargar(cursor, true, buscar, soloElegibles)}
+          onClick={() => void cargar(cursor, true, buscar, soloElegibles, jornada)}
           disabled={!hayMas || cargando}
         >
           {cargando ? "Cargando…" : hayMas ? "Cargar más" : "No hay más"}

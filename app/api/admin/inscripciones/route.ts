@@ -21,6 +21,10 @@ export const GET = conSesion(async ({ supabase, request }) => {
   const soloElegibles = url.searchParams.get("elegibles");
   const cursorAt = url.searchParams.get("cursor_at");
   const cursorId = url.searchParams.get("cursor_id");
+  // Filtro por jornada: es la pregunta operativa del día («¿quién entra al
+  // sorteo de esta noche?»). Va a Postgres, que tiene un índice para eso, y no a
+  // un filtro en JavaScript sobre lo que ya llegó (regla dura 6).
+  const jornada = Number(url.searchParams.get("jornada"));
 
   const { data, error } = await supabase.rpc("listar_inscripciones", {
     p_buscar: buscar || null,
@@ -30,6 +34,7 @@ export const GET = conSesion(async ({ supabase, request }) => {
     p_cursor_creado_at: cursorAt || null,
     p_cursor_id: cursorId ? Number(cursorId) : null,
     p_limite: 50,
+    p_sorteo_id: Number.isInteger(jornada) && jornada > 0 ? jornada : null,
   });
 
   if (error) return errorRpc(error.message);

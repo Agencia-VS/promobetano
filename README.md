@@ -7,13 +7,21 @@ brief técnico del 18 de agosto de 2026.
 
 ## Estado
 
-El **flujo público está completo**: portada, puerta 18+, formulario, alta contra
-Supabase, encolado del correo de confirmación y drenaje por cron. El esquema de
+El **flujo público y el panel están completos**: portada, puerta 18+, formulario,
+alta contra Supabase, encolado del correo y drenaje por cron; y en `/admin`, el
+listado por cursor, el interruptor de inscripciones y los sorteos. El esquema de
 base está escrito y verificado contra un PostgreSQL 16 real.
 
-Lo que falta para producción es el panel de administración, el webhook de
-rebotes de Resend y las respuestas del cliente que siguen abiertas
+Lo que falta para producción es aplicar el esquema a un proyecto real, el webhook
+de rebotes de Resend y las respuestas del cliente que siguen abiertas
 (ver [Qué falta](#qué-falta-para-producción)).
+
+**Son tres sorteos, uno por día, a las 21:00 de Santiago**, con 30 ganadores y 10
+suplentes cada uno. Una inscripción entra solo al sorteo de su jornada y nunca a
+los siguientes; una persona puede inscribirse una vez por jornada —hasta tres— y
+gana como máximo una vez. El calendario vive en `CONCURSO_SORTEOS` y se lleva a la
+base con «Sincronizar jornadas» en `/admin`. El detalle del modelo está en
+[supabase/README.md](supabase/README.md).
 
 La ventana de inscripción se configura por variable de entorno. Fuera de ella
 `/inscripcion` no muestra el formulario, así que **para trabajar en el
@@ -21,8 +29,14 @@ formulario hay que abrir la ventana**:
 
 ```bash
 CONCURSO_INICIO=2020-01-01T00:00:00-04:00 \
-CONCURSO_CIERRE=2100-01-01T00:00:00-04:00 npm run dev
+CONCURSO_CIERRE=2100-01-01T00:00:00-04:00 \
+CONCURSO_SORTEOS=2026-08-21T21:00:00-04:00 npm run dev
 ```
+
+Ojo: la base también exige una jornada que cubra el momento del alta, así que
+mover solo estas variables abre el formulario pero no hace pasar la inscripción.
+Para eso hay que sincronizar las jornadas desde `/admin` con la ventana ya
+movida.
 
 ## Rutas
 
@@ -34,10 +48,11 @@ CONCURSO_CIERRE=2100-01-01T00:00:00-04:00 npm run dev
 | `/inscripcion` | Formulario de inscripción |
 | `/listo` | Confirmación |
 | `/bases` | Bases y condiciones (borrador, requiere abogado) |
-| `/admin` | Panel: estado del concurso, recuentos, sorteos |
+| `/admin` | Panel: estado del concurso, recuentos, jornadas y sorteos |
 | `/admin/inscripciones` | Listado paginado por cursor con buscador |
 | `/api/inscripcion` | Alta: revalida en servidor y llama a la RPC `crear_inscripcion` |
 | `/api/cron/email` | Drenaje de `email_outbox` por lotes de 100 (Vercel Cron) |
+| `/api/admin/jornadas` | Lleva el calendario de `CONCURSO_SORTEOS` a las filas de `sorteos` |
 | `proxy.ts` | Exige la puerta 18+ y resuelve la atribución de panel |
 
 ## Decisiones que conviene conocer
@@ -90,8 +105,11 @@ ya instalado).
 3. **Contacto de datos personales.** `NEXT_PUBLIC_CORREO_DATOS` sigue con el
    dominio reservado por la RFC 2606. Es un bloqueante legal.
 4. **Datos pendientes de las bases.** `/bases` marca en pantalla cada dato sin
-   definir: fecha del sorteo, premio, cantidad de ganadores y suplentes, rol de
-   Betano en el tratamiento.
+   definir: premio, canje, plazos y rol de Betano en el tratamiento. Las fechas
+   de sorteo y las cantidades ya están puestas. Además hay **dos cláusulas
+   marcadas «Redacción por revisar»** —la unicidad por jornada y los tres sorteos
+   diarios— que describen lo que hace el código y necesitan visto bueno del
+   abogado antes de publicar.
 5. **Lista de paneles.** Completar `PANELES` en `lib/origen.ts` antes de generar
    e imprimir los QR.
 6. **Webhook de rebotes.** La función `registrar_evento_email` ya existe en la
@@ -104,6 +122,6 @@ Opcional y no bloqueante: Cloudflare Turnstile. Los índices únicos sobre RUT y
 correo normalizados ya impiden la inscripción duplicada, que es lo que protege
 la integridad del sorteo.
 
-Respuestas del cliente que siguen abiertas: sorteo único o diario, cantidad de
-ganadores y premio, canje presencial, malls y paneles, y si los datos van a un
-CRM de Betano.
+Respuestas del cliente que siguen abiertas: **cuál es el premio** exactamente,
+canje presencial, malls y paneles, y si los datos van a un CRM de Betano. El
+formato del sorteo y las cantidades ya están respondidos.

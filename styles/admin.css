@@ -84,6 +84,21 @@
   padding: 18px 20px;
 }
 
+/* Título y acción de la tarjeta en la misma línea. Envuelve en pantallas
+   angostas para que el botón no empuje el título fuera de la caja. */
+.tarjeta__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.tarjeta__cabecera .tarjeta__titulo {
+  margin-bottom: 0;
+}
+
 .tarjeta__titulo {
   margin: 0 0 14px;
   font-family: var(--font-title);
@@ -296,6 +311,12 @@
 
 .tabla tr:hover td {
   background: rgba(249, 241, 233, 0.035);
+}
+
+/* Datos de apoyo —ventanas, horas de cierre— que no deben competir con las
+   cifras del sorteo. Sigue sobre el 4,5:1 que pide AA para texto pequeño. */
+.tabla__tenue {
+  color: rgba(249, 241, 233, 0.62);
 }
 
 .pastilla {

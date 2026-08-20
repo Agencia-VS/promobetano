@@ -16,6 +16,7 @@ import {
   type InscripcionValues,
 } from "@/lib/inscripcion";
 import { guardaConfirmado } from "@/lib/confirmado";
+import { CORREO_DATOS } from "@/lib/contacto";
 
 const CAMPOS_TEXTO: CampoTexto[] = ["nombre", "email", "tel", "rut"];
 const DEBOUNCE_MS = 400;
@@ -27,12 +28,29 @@ const DEBOUNCE_MS = 400;
  */
 function mensajeDeFalla(codigo: unknown): string {
   switch (codigo) {
+    /*
+     * El duplicado ya no es un callejón sin salida: hay un sorteo por día y la
+     * inscripción es una por día, así que quien ya participó hoy puede volver
+     * mañana. Decir solo "ya está inscrito" haría que se fuera creyendo que su
+     * participación vale para los tres sorteos, que es justo lo que no pasa.
+     *
+     * La frase "ya está inscrito" se conserva a propósito: es la que comprueba
+     * el e2e del alta rechazada.
+     */
     case "duplicado_rut":
-      return "Ese RUT ya está inscrito. Es una inscripción por persona.";
+      return "Ese RUT ya está inscrito en el sorteo de hoy. Cada día se puede participar una vez: vuelve mañana para entrar al siguiente.";
     case "duplicado_email":
-      return "Ese correo ya está inscrito. Es una inscripción por persona.";
+      return "Ese correo ya está inscrito en el sorteo de hoy. Cada día se puede participar una vez: vuelve mañana para entrar al siguiente.";
     case "cerrado":
       return "Las inscripciones ya cerraron.";
+    case "sin_jornada":
+      // No hay jornada cargada que cubra este instante. Es un problema nuestro,
+      // no de la persona, y el reintento más tarde puede funcionar.
+      return "Las inscripciones están en pausa. Vuelve a escanear el código en un rato.";
+    case "vetado":
+      // Baja por incumplimiento de las bases. El motivo no se explica acá, pero
+      // se deja una vía para reclamar en vez de un muro.
+      return `No pudimos registrar esta inscripción. Si crees que es un error, escríbenos a ${CORREO_DATOS}.`;
     default:
       return "No pudimos inscribirte. Toca de nuevo para reintentar.";
   }
@@ -59,7 +77,9 @@ export function FormularioInscripcion({
    * el modal y mandaba a la pantalla completa, que es exactamente lo que un
    * modal existe para evitar.
    */
-  alExito?: (email: string) => void;
+  /** Recibe además la etiqueta del sorteo, para que la confirmación del modal
+      pueda decir lo mismo que /listo y no solo el correo. */
+  alExito?: (email: string, sorteo?: string) => void;
 }) {
   const router = useRouter();
   // El borrador solo trae campos de texto; el consentimiento parte siempre en
@@ -185,17 +205,25 @@ export function FormularioInscripcion({
 
       if (r.ok) {
         const correo = v.email.trim();
+        /*
+         * A qué sorteo entró, tal como lo devolvió el servidor. Se guarda en vez
+         * de recalcularlo en /listo porque el instante que importa es el del
+         * envío: quien manda el formulario a las 20:59:59 entra al sorteo de
+         * esta noche, y recalcularlo dos segundos después diría el de mañana.
+         */
+        const cuerpo = (await r.json().catch(() => ({}))) as { sorteo?: unknown };
+        const sorteo = typeof cuerpo.sorteo === "string" ? cuerpo.sorteo : undefined;
         // Se guarda igual aunque no naveguemos: si después abre /listo por
         // historial o por el enlace de otro dispositivo, la pantalla tiene que
         // poder decirle a qué correo se mandó la confirmación.
-        guardaConfirmado({ email: correo, origen });
+        guardaConfirmado({ email: correo, origen, sorteo });
         pendiente.current = null;
         borraDraft();
         // Sin apagar `enviando`: tanto la navegación como el cambio de
         // contenido del modal desmontan este componente, y reactivar el botón
         // acá solo abre una ventana para un segundo submit.
         if (alExito) {
-          alExito(correo);
+          alExito(correo, sorteo);
           return;
         }
         router.push("/listo");

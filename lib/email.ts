@@ -1,5 +1,6 @@
 import { MARCA } from "./marca.ts";
 import { CORREO_DATOS } from "./contacto.ts";
+import { fechaSorteo } from "./concurso.ts";
 import { urlAbsoluta } from "./sitio.ts";
 
 /**
@@ -38,7 +39,7 @@ export function primerNombre(nombre: string): string {
   return primero || "hola";
 }
 
-export type TipoCorreo = "confirmacion" | "ganador" | "suplente" | "promovido";
+export type TipoCorreo = "confirmacion" | "ganador";
 
 type Plantilla = { asunto: string; html: string; texto: string };
 
@@ -132,21 +133,30 @@ function titular(texto: string, color: string): string {
  * Sobre el naranja el texto va en blanco puro —es lo que dice el token del
  * brief— y los numerales bajan a 70% para que se lean como numeración y no
  * compitan con la instrucción.
+ *
+ * El encabezado lo pone cada pieza: «Si te lo ganas» en la confirmación, donde
+ * todavía no se ganó nada, y «Te lo ganaste» en el correo de ganador. Un «si te
+ * lo ganas» en el correo que da la buena noticia leería el premio como
+ * hipótesis, y eso en una pieza con efectos legales no se puede.
  */
-const PASOS_HTML = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${MARCA.confianza};border-radius:8px;">
+function pasosHtml(encabezado: string): string {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${MARCA.confianza};border-radius:8px;">
 <tr><td class="e-pasos" style="padding:22px 24px;font-family:${TIPOGRAFIA};">
-<p style="margin:0 0 14px;font-size:10.5px;letter-spacing:.28em;text-transform:uppercase;color:rgba(255,255,255,.75);">Si te lo ganas, así se usa</p>
+<p style="margin:0 0 14px;font-size:10.5px;letter-spacing:.28em;text-transform:uppercase;color:rgba(255,255,255,.75);">${escapaHtml(encabezado)}</p>
 <p style="margin:0;font-size:15.5px;line-height:1.85;color:${MARCA.white};">
 <span style="color:rgba(255,255,255,.6);">01</span>&nbsp;&nbsp;Abre la botella.<br>
 <span style="color:rgba(255,255,255,.6);">02</span>&nbsp;&nbsp;Susúrrate: «tú puedes».<br>
 <span style="color:rgba(255,255,255,.6);">03</span>&nbsp;&nbsp;Échate bastante y con confianza.
 </p>
 </td></tr></table>`;
+}
 
-const PASOS_TEXTO = `Si te lo ganas, así se usa:
+function pasosTexto(encabezado: string): string {
+  return `${encabezado}:
 01  Abre la botella.
 02  Susúrrate: «tú puedes».
 03  Échate bastante y con confianza.`;
+}
 
 /**
  * Envoltorio común.
@@ -197,9 +207,9 @@ ${filas}
 }
 
 /**
- * Molde de las cuatro piezas: lockup, hilo, contenido, hilo, pie legal. Lo que
- * cambia entre correos es el bloque central, no la estructura — así las cuatro
- * se reconocen como la misma familia.
+ * Molde de las dos piezas: lockup, hilo, contenido, hilo, pie legal. Lo que
+ * cambia entre correos es el bloque central, no la estructura — así las dos se
+ * reconocen como la misma familia.
  */
 function pieza(preheader: string, contenido: string): string {
   return documento(
@@ -214,103 +224,86 @@ ${pie()}`,
   );
 }
 
-export function plantilla(tipo: TipoCorreo, nombre: string): Plantilla {
+/**
+ * `sorteoAt` es el instante del sorteo de la jornada a la que entró la persona.
+ *
+ * Importa decirlo desde que hay tres sorteos: quien se inscribe el viernes a las
+ * 21:30 entra al del SÁBADO, y sin esta línea se queda esperando un resultado que
+ * no le corresponde. Es opcional porque puede no haberlo —un sorteo ad-hoc sin
+ * ventana— y entonces la frase se omite en vez de inventar una fecha, igual que
+ * las imágenes cuando falta el dominio.
+ */
+export function plantilla(
+  tipo: TipoCorreo,
+  nombre: string,
+  sorteoAt?: Date | null,
+): Plantilla {
   const quien = escapaHtml(primerNombre(nombre));
   const quienTexto = primerNombre(nombre);
 
   if (tipo === "confirmacion") {
+    // El correo se abre horas después y puede que otro día, así que la fecha va
+    // absoluta: un "hoy a las 21:00" en un correo no significa nada.
+    const cuando = sorteoAt ? `Entras al sorteo del ${fechaSorteo(sorteoAt)}. ` : "";
     return {
       asunto: "Recibimos tu inscripción — Eau de Confianza",
       html: pieza(
-        "Recibimos tu inscripción. Nos comunicaremos contigo.",
+        `${cuando}Si ganas, nos comunicaremos contigo.`,
         `${antetitulo("Inscripción confirmada")}
 ${titular(`Recibimos tu inscripción, ${quien}`, MARCA.bone)}
-<p style="margin:18px 0 28px;font-size:16px;line-height:1.65;color:${CUERPO};">Nos comunicaremos contigo.</p>
-${PASOS_HTML}`,
+<p style="margin:18px 0 28px;font-size:16px;line-height:1.65;color:${CUERPO};">${cuando}Si ganas, nos comunicaremos contigo.</p>
+${pasosHtml("Si te lo ganas, así se usa")}`,
       ),
       texto: `Recibimos tu inscripción, ${quienTexto}.
 
-Nos comunicaremos contigo.
+${cuando}Si ganas, nos comunicaremos contigo.
 
-${PASOS_TEXTO}
+${pasosTexto("Si te lo ganas, así se usa")}
 
 ${PIE_TEXTO}`,
     };
   }
 
-  if (tipo === "ganador" || tipo === "promovido") {
-    return ganaste(tipo, quien, quienTexto);
-  }
-
-  /*
-   * Suplente. Se queda escueto a propósito: cuántos suplentes hay, en qué orden
-   * entran y con qué plazo son las decisiones 03 y 04 del brief, que siguen
-   * abiertas. Prometer acá un número o un plazo inventado es exactamente lo que
-   * no se puede hacer en un correo con efectos legales.
-   *
-   * Y va SIN los pasos del perfume: son «si te lo ganas», y acá todavía no se
-   * ganó nada. Ponerlos sonaría a que sí.
-   */
-  return {
-    asunto: "Quedaste como suplente — Eau de Confianza",
-    html: pieza(
-      "Quedaste como suplente. Si se libera un cupo, te avisamos acá mismo.",
-      `${antetitulo("Resultado del sorteo")}
-${titular(`Quedaste como suplente, ${quien}`, MARCA.bone)}
-<p style="margin:18px 0 0;font-size:16px;line-height:1.65;color:${CUERPO};">No saliste sorteado esta vez, pero quedaste en la lista de suplentes. Si se libera un cupo te escribimos a este mismo correo.</p>`,
-    ),
-    texto: `Quedaste como suplente, ${quienTexto}.
-
-No saliste sorteado esta vez, pero quedaste en la lista de suplentes. Si se libera un cupo te escribimos a este mismo correo.
-
-${PIE_TEXTO}`,
-  };
+  return ganaste(quien, quienTexto);
 }
 
 /**
  * La buena noticia.
  *
- * Comparte maqueta con el resto de las piezas —misma familia— pero pone el
- * titular en naranja en vez de hueso. Sobre el ink da 5,6:1 de contraste, así
- * que pasa AA incluso como texto normal, y usa el acento de campaña
- * tipográficamente en lugar de como campo de color. Es lo que hace que el
- * correo se sienta distinto al abrirlo sin necesitar una segunda maqueta.
+ * Comparte maqueta con la confirmación —misma familia— pero pone el titular en
+ * naranja en vez de hueso. Sobre el ink da 5,6:1 de contraste, así que pasa AA
+ * incluso como texto normal, y usa el acento de campaña tipográficamente en
+ * lugar de como campo de color. Es lo que hace que el correo se sienta distinto
+ * al abrirlo sin necesitar una segunda maqueta.
  *
  * «Confiaste y ganaste» y no «felicidades»: amarra con el nombre de la
  * fragancia, con el CTA del sitio y con las instrucciones de la carta.
  * «Felicidades» lo podría firmar cualquier marca.
  *
- * `promovido` comparte titular porque es la misma noticia —el cupo ya es suyo—
- * y solo cambia el antetítulo, que explica cómo se llegó a ella.
- *
  * No se nombra el premio, ni un plazo, ni una forma de entrega: las decisiones
  * 03 y 04 del brief siguen abiertas. El correo dice lo único que se sabe con
  * certeza, que es que el equipo va a contactar.
+ *
+ * No sale solo: lo encola a mano el equipo desde el panel, con el botón del
+ * sorteo ejecutado. El suplente que sube por un declinado recibe ESTA misma
+ * pieza —el cupo ya es suyo— la próxima vez que se tire el batch de esa
+ * jornada.
  */
-function ganaste(
-  tipo: "ganador" | "promovido",
-  quien: string,
-  quienTexto: string,
-): Plantilla {
-  const promovido = tipo === "promovido";
-  const kicker = promovido ? "Se liberó un cupo y quedó para ti" : "Saliste sorteado";
-
+function ganaste(quien: string, quienTexto: string): Plantilla {
   return {
-    asunto: promovido
-      ? "¡Se liberó un cupo y es tuyo! — Eau de Confianza"
-      : "¡Confiaste y ganaste! — Eau de Confianza",
+    asunto: "¡Confiaste y ganaste! — Eau de Confianza",
     html: pieza(
-      `${kicker}. El equipo se contactará contigo para la entrega.`,
-      `${antetitulo(kicker)}
+      "Saliste sorteado. El equipo se contactará contigo para la entrega.",
+      `${antetitulo("Saliste sorteado")}
 ${titular("¡Confiaste <br>y ganaste!", MARCA.confianza)}
 <p style="margin:18px 0 28px;font-size:16px;line-height:1.65;color:${CUERPO};">${quien}, el equipo se contactará contigo para gestionar la entrega de los premios.</p>
-${PASOS_HTML}`,
+${pasosHtml("Te lo ganaste, así se usa")}`,
     ),
     texto: `¡Confiaste y ganaste!
 
-${kicker}. ${quienTexto}, el equipo se contactará contigo para gestionar la entrega de los premios.
+Saliste sorteado. ${quienTexto}, el equipo se contactará contigo para gestionar la entrega de los premios.
 
-${PASOS_TEXTO}
+${pasosTexto("Te lo ganaste, así se usa")}
 
 ${PIE_TEXTO}`,
   };

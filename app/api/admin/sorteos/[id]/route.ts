@@ -21,10 +21,18 @@ export const GET = conSesion(async ({ supabase, params }) => {
  * encuentra fila que actualizar y aborta sin tocar nada. No hace falta un
  * candado en el navegador, que además no serviría con dos pestañas abiertas.
  */
-export const POST = conSesion(async ({ supabase, usuario, params }) => {
+export const POST = conSesion(async ({ supabase, usuario, request, params }) => {
+  /*
+   * `forzar` sortea con la ventana de la jornada todavía abierta. Se acepta
+   * explícitamente y no por defecto: quien se inscribió hace dos minutos está en
+   * plazo, y el sorteo no se deshace. La RPC lo deja registrado en la auditoría.
+   */
+  const cuerpo = (await request.json().catch(() => ({}))) as { forzar?: unknown };
+
   const { data, error } = await supabase.rpc("ejecutar_sorteo", {
     p_sorteo_id: Number(params.id),
     p_actor: usuario.id,
+    p_forzar: cuerpo.forzar === true,
   });
 
   if (error) return errorRpc(error.message);

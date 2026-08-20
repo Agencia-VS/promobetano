@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { supabasePublico } from "@/lib/supabase/publico";
+import { etiquetaJornada, jornadaDe } from "@/lib/concurso";
 import { estadoVigente } from "@/lib/concurso-servidor";
 import { normalizaTelefono, valida } from "@/lib/inscripcion";
 import { HEADER_ORIGEN, ORIGEN_DIRECTO, slugValido } from "@/lib/origen";
@@ -92,17 +93,46 @@ export async function POST(request: NextRequest) {
   const resultado = fila?.resultado as string | undefined;
 
   switch (resultado) {
-    case "creada":
-      return NextResponse.json({ ok: true }, { status: 201 });
+    case "creada": {
+      /*
+       * A qué sorteo entró, para que la confirmación lo diga. La jornada la
+       * asignó la base contra su propia ventana; acá se formatea la etiqueta con
+       * el calendario del entorno, que es la misma fuente con la que se cargaron
+       * esas ventanas. Si los dos dejaran de coincidir, el panel lo avisa: no
+       * vale la pena una consulta más en el camino crítico del alta.
+       */
+      const jornada = jornadaDe(new Date());
+      return NextResponse.json(
+        { ok: true, sorteo: jornada ? etiquetaJornada(jornada) : null },
+        { status: 201 },
+      );
+    }
     case "duplicado_rut":
     case "duplicado_email":
       // 409 y no 400: los datos son válidos, lo que pasa es que esa persona ya
-      // está inscrita. El formulario lo dice con su propio mensaje.
+      // está inscrita EN EL SORTEO DE HOY. El formulario lo dice con su propio
+      // mensaje, que incluye que mañana se puede volver a participar.
       return NextResponse.json({ error: resultado }, { status: 409 });
     case "rut_invalido":
     case "falta_consentimiento":
     case "datos_invalidos":
       return NextResponse.json({ error: resultado }, { status: 400 });
+    case "sin_jornada":
+      /*
+       * No hay ninguna jornada cargada que cubra este instante. NO es culpa de
+       * quien se inscribe y tampoco es "cerrado": es configuración incompleta
+       * —las ventanas de la base no llegan hasta acá— y quien tiene que
+       * enterarse es el equipo. 503 y no 4xx porque el reintento más tarde puede
+       * funcionar, y el detalle accionable va al log del servidor.
+       */
+      console.error(
+        "crear_inscripcion devolvió sin_jornada: ninguna ventana de `sorteos` cubre este instante. Sincroniza las jornadas desde /admin.",
+      );
+      return NextResponse.json({ error: "sin_jornada" }, { status: 503 });
+    case "vetado":
+      // Baja lógica por incumplimiento. 403 y un mensaje neutro: el motivo no se
+      // le explica a quien lo intenta, pero se le da una vía para reclamar.
+      return NextResponse.json({ error: "vetado" }, { status: 403 });
     default:
       console.error("crear_inscripcion devolvió algo inesperado:", resultado);
       return NextResponse.json({ error: "servidor" }, { status: 502 });

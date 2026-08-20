@@ -1,16 +1,32 @@
 import { redirect } from "next/navigation";
 import { usuarioAdmin } from "@/lib/supabase/servidor";
 import { estadoVigente } from "@/lib/concurso-servidor";
-import { cierre, fechaYHora, inicio } from "@/lib/concurso";
+import {
+  cierre,
+  fechaYHora,
+  inicio,
+  jornadaDe,
+  problemasCalendario,
+} from "@/lib/concurso";
 import { Barra } from "@/components/admin/Barra";
 import { InterruptorConcurso } from "@/components/admin/InterruptorConcurso";
 import { PanelSorteos, type Sorteo } from "@/components/admin/PanelSorteos";
+import { PruebaCorreo } from "@/components/admin/PruebaCorreo";
 import { CORREO_DATOS_SIN_CONFIGURAR } from "@/lib/contacto";
 
 export const dynamic = "force-dynamic";
 
 type Resumen = {
+  /** Inscripciones. Con tres jornadas, una persona puede tener hasta tres. */
   total: number;
+  /**
+   * Personas distintas por RUT. Es la cifra comparable con un sorteo único.
+   *
+   * Opcional porque la trajo la migración de jornadas: contra una base que aún
+   * no la tiene, esta columna no viene. El tipo lo dice para que el compilador
+   * obligue a tratarlo en vez de descubrirlo en producción.
+   */
+  personas?: number;
   elegibles: number;
   con_marketing: number;
   rebotes: number;
@@ -18,6 +34,26 @@ type Resumen = {
 };
 
 type PorPanel = { origen: string; total: number; elegibles: number };
+
+type Jornada = {
+  sorteo_id: number;
+  clave: string;
+  nombre: string;
+  estado: string;
+  ventana_desde: string;
+  ventana_hasta: string;
+  inscritos: number;
+  vigente: boolean;
+};
+
+const RELOJ = new Intl.DateTimeFormat("es-CL", {
+  timeZone: "America/Santiago",
+  weekday: "short",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
 
 export default async function AdminPage() {
   /*
@@ -28,21 +64,61 @@ export default async function AdminPage() {
   const { supabase, usuario } = await usuarioAdmin();
   if (!supabase || !usuario) redirect("/admin/login");
 
-  const [estadoRes, resumenRes, panelesRes, sorteosRes] = await Promise.all([
-    estadoVigente(),
-    supabase.rpc("resumen_inscripciones"),
-    supabase.rpc("resumen_por_panel"),
-    supabase.rpc("listar_sorteos"),
-  ]);
+  const [estadoRes, resumenRes, panelesRes, sorteosRes, jornadasRes] =
+    await Promise.all([
+      estadoVigente(),
+      supabase.rpc("resumen_inscripciones"),
+      supabase.rpc("resumen_por_panel"),
+      supabase.rpc("listar_sorteos"),
+      supabase.rpc("resumen_jornadas"),
+    ]);
 
   const resumen = (
     Array.isArray(resumenRes.data) ? resumenRes.data[0] : resumenRes.data
   ) as Resumen | null;
   const paneles = (panelesRes.data ?? []) as PorPanel[];
   const sorteos = (sorteosRes.data ?? []) as Sorteo[];
+  const jornadas = (jornadasRes.data ?? []) as Jornada[];
 
   const desde = inicio();
   const hasta = cierre();
+
+  /*
+   * Dos desajustes distintos, y los dos dejan el formulario rechazando altas con
+   * el QR pegado en el mall:
+   *
+   *   · el calendario del entorno no cuadra (CONCURSO_SORTEOS mal cargado, un
+   *     cierre posterior al último sorteo);
+   *   · el calendario está bien pero la BASE no tiene ninguna jornada que cubra
+   *     este instante, porque nadie apretó «Sincronizar».
+   *
+   * El segundo es el que no se nota de ninguna otra forma: el alta responde 503 y
+   * quien está en el mall ve «inscripciones en pausa» sin que nadie del equipo se
+   * entere. Por eso se compara lo que dice el entorno con lo que hay en la base.
+   */
+  const problemas = problemasCalendario();
+  const jornadaAhora = jornadaDe();
+  const jornadaEnBase = jornadas.find((j) => j.vigente) ?? null;
+  const faltaSincronizar = jornadaAhora !== null && jornadaEnBase === null;
+
+  /*
+   * ¿Está aplicada la migración de jornadas?
+   *
+   * Este panel llama a las RPC por nombre y lee sus columnas sin tipos
+   * generados, así que una base con una migración de menos no da un error de
+   * compilación: da datos incompletos, y antes eso tumbaba la página con un
+   * TypeError sobre una columna ausente. Se detecta explícitamente y se dice,
+   * porque el resto de los avisos serían ruido —o directamente mentira— hasta
+   * que la migración esté puesta.
+   *
+   * Dos señales, y basta una: `resumen_jornadas` no existe todavía, o
+   * `resumen_inscripciones` respondió sin la columna `personas`. Se exige que
+   * `resumen` no sea null para no confundir «falta la migración» con «la base no
+   * respondió», que se arreglan de formas distintas.
+   */
+  const esquemaSinJornadas =
+    Boolean(jornadasRes.error) ||
+    (resumen !== null && resumen.personas === undefined);
 
   return (
     <>
@@ -55,6 +131,57 @@ export default async function AdminPage() {
             sigue siendo <code>datos@example.com</code>. La Ley 21.719 obliga a
             atender por esa vía las solicitudes de acceso y eliminación. Cárgalo
             en <code>NEXT_PUBLIC_CORREO_DATOS</code>.
+          </p>
+        )}
+
+        {problemas.length > 0 && (
+          <div className="aviso aviso--error">
+            <strong>Calendario de sorteos:</strong> revisa las variables
+            <code> CONCURSO_SORTEOS</code>, <code>CONCURSO_INICIO</code> y{" "}
+            <code>CONCURSO_CIERRE</code>.
+            <ul>
+              {problemas.map((p) => (
+                <li key={p}>{p}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {esquemaSinJornadas && (
+          <div className="aviso aviso--error">
+            <strong>Falta aplicar la migración de jornadas en la base.</strong>{" "}
+            El código ya espera los tres sorteos diarios, pero esta base todavía
+            tiene el esquema anterior, así que el panel muestra datos incompletos
+            y ejecutar un sorteo va a fallar.
+            <br />
+            <br />
+            Aplica <code>
+              supabase/migrations/20260819170000_jornadas.sql
+            </code>{" "}
+            —con <code>supabase db push</code> o pegándolo en el editor SQL— y
+            recarga esta página. La migración crea las tres jornadas por su
+            cuenta; después conviene apretar «Sincronizar jornadas» para
+            comprobar que coinciden con el calendario.
+            {jornadasRes.error ? (
+              <>
+                <br />
+                <br />
+                <span className="cifra__nombre">
+                  La base respondió: {jornadasRes.error.message}
+                </span>
+              </>
+            ) : null}
+          </div>
+        )}
+
+        {!esquemaSinJornadas && faltaSincronizar && (
+          <p className="aviso aviso--error">
+            <strong>Ninguna jornada cubre este momento en la base.</strong> El
+            calendario dice que debería estar abierta{" "}
+            <strong>{jornadaAhora?.nombre}</strong>, pero no hay una fila de
+            sorteo que la contenga, así que{" "}
+            <strong>toda inscripción se está rechazando</strong>. Aprieta
+            «Sincronizar jornadas» en el bloque de Sorteos.
           </p>
         )}
 
@@ -73,6 +200,10 @@ export default async function AdminPage() {
             {resumen ? (
               <div className="cifras">
                 <Cifra valor={resumen.total} nombre="Total" />
+                {/* Con una inscripción por jornada, `total` cuenta
+                    inscripciones y no gente: sin esta cifra al lado, el número
+                    grande se lee como personas y no lo es. */}
+                <Cifra valor={resumen.personas} nombre="Personas" />
                 <Cifra valor={resumen.elegibles} nombre="Elegibles" />
                 <Cifra valor={resumen.con_marketing} nombre="Marketing" />
                 <Cifra valor={resumen.rebotes} nombre="Rebotes" />
@@ -80,6 +211,51 @@ export default async function AdminPage() {
               </div>
             ) : (
               <p className="vacio">Sin datos todavía.</p>
+            )}
+          </div>
+
+          <div className="tarjeta">
+            <h2 className="tarjeta__titulo">Por jornada</h2>
+            {jornadas.length === 0 ? (
+              <p className="vacio">
+                Sin jornadas cargadas. Sincronízalas desde el bloque de Sorteos:
+                mientras no existan, el formulario no puede aceptar inscripciones.
+              </p>
+            ) : (
+              <div className="tabla-caja">
+                <table className="tabla">
+                  <thead>
+                    <tr>
+                      <th>Jornada</th>
+                      <th>Cierra</th>
+                      <th>Inscritos</th>
+                      <th>Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {jornadas.map((j) => (
+                      <tr key={j.clave}>
+                        <td>
+                          {j.nombre}
+                          {j.vigente ? (
+                            <>
+                              {" "}
+                              <span className="pastilla">en curso</span>
+                            </>
+                          ) : null}
+                        </td>
+                        <td className="tabla__tenue">
+                          {RELOJ.format(new Date(j.ventana_hasta))}
+                        </td>
+                        <td>{j.inscritos.toLocaleString("es-CL")}</td>
+                        <td>
+                          <span className="pastilla">{j.estado}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
 
@@ -113,15 +289,35 @@ export default async function AdminPage() {
         </div>
 
         <PanelSorteos sorteos={sorteos} />
+
+        <PruebaCorreo />
       </main>
     </>
   );
 }
 
-function Cifra({ valor, nombre }: { valor: number; nombre: string }) {
+/**
+ * Una cifra del resumen.
+ *
+ * `valor` admite null y undefined a propósito. Este panel lee RPC por nombre de
+ * columna, sin tipos generados, así que una base con una migración de menos
+ * devuelve una columna menos y llega `undefined`. Antes eso tumbaba la página
+ * entera con un TypeError —y justo cuando el panel es la herramienta que hace
+ * falta para arreglarlo—; ahora se pinta un guion y el aviso de arriba explica
+ * la causa.
+ */
+function Cifra({
+  valor,
+  nombre,
+}: {
+  valor: number | null | undefined;
+  nombre: string;
+}) {
   return (
     <div>
-      <div className="cifra__valor">{valor.toLocaleString("es-CL")}</div>
+      <div className="cifra__valor">
+        {typeof valor === "number" ? valor.toLocaleString("es-CL") : "—"}
+      </div>
       <div className="cifra__nombre">{nombre}</div>
     </div>
   );

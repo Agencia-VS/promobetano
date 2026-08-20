@@ -3,12 +3,7 @@ import { test } from "node:test";
 import { escapaHtml, plantilla, primerNombre, type TipoCorreo } from "../lib/email.ts";
 import { baseAbsoluta, urlAbsoluta } from "../lib/sitio.ts";
 
-const TIPOS: TipoCorreo[] = [
-  "confirmacion",
-  "ganador",
-  "suplente",
-  "promovido",
-];
+const TIPOS: TipoCorreo[] = ["confirmacion", "ganador"];
 
 /** Las plantillas leen el dominio de process.env al renderizar, así que se
     puede mover entre casos sin recargar el módulo. */
@@ -29,10 +24,10 @@ function conDominio<T>(valor: string | undefined, fn: () => T): T {
   }
 }
 
-test("los cuatro tipos que encola la base renderizan", () => {
+test("los dos tipos que encola la base renderizan", () => {
   // Si un tipo faltara, esa persona no recibiría nada: la cola inserta
-  // 'ganador'/'suplente' desde ejecutar_sorteo y 'promovido' desde
-  // promover_suplente, y el cron llama a plantilla() con lo que venga.
+  // 'confirmacion' desde crear_inscripcion y 'ganador' desde
+  // encolar_correos_ganadores, y el cron llama a plantilla() con lo que venga.
   for (const tipo of TIPOS) {
     const p = plantilla(tipo, "Ana María Pérez");
     assert.ok(p.asunto.length > 0, `${tipo}: sin asunto`);
@@ -82,7 +77,7 @@ test("con dominio, las imágenes son absolutas y llevan alt", () => {
       );
       assert.ok(!html.includes('alt=""'), `${tipo}: una imagen sin alt`);
     }
-    // El lockup es la cabecera de las cuatro piezas.
+    // El lockup es la cabecera de las dos piezas.
     for (const tipo of TIPOS) {
       const { html } = plantilla(tipo, "Ana");
       assert.ok(
@@ -148,25 +143,25 @@ test("el correo de ganador dice lo que el equipo prometió y nada más", () => {
   }
 });
 
-test("suplente no felicita a nadie", () => {
-  // Un suplente que reciba "¡Felicidades, ganaste!" es un problema real, no un
-  // detalle de copy: los cuatro tipos salen de la misma función.
-  const { asunto, html, texto } = plantilla("suplente", "Ana");
-  assert.ok(!/ganaste/i.test(asunto), "el asunto felicita");
-  assert.ok(!/ganaste/i.test(html), "el cuerpo felicita");
-  assert.match(texto, /suplente/i);
+test("los pasos del perfume hablan en el tiempo que corresponde", () => {
+  // En la confirmación todavía no se ganó nada: «si te lo ganas». En el correo
+  // de ganador el premio ya es de la persona: «te lo ganaste». Mezclarlos es
+  // el error de copy que esta campaña no puede permitirse en una pieza legal.
+  const conf = plantilla("confirmacion", "Ana");
+  assert.match(conf.html, /Si te lo ganas, así se usa/);
+  assert.match(conf.texto, /Si te lo ganas, así se usa/);
+  assert.doesNotMatch(conf.html, /Te lo ganaste/);
+
+  const gan = plantilla("ganador", "Ana");
+  assert.match(gan.html, /Te lo ganaste, así se usa/);
+  assert.match(gan.texto, /Te lo ganaste, así se usa/);
+  assert.doesNotMatch(gan.html, /Si te lo ganas/);
 });
 
-test("promovido celebra, porque el cupo ya es suyo", () => {
-  const { html, texto } = plantilla("promovido", "Ana");
-  assert.match(html, /¡Confiaste/);
-  assert.match(texto, /se liberó un cupo/i);
-});
-
-test("la confirmación dice solo que nos comunicaremos", () => {
+test("la confirmación dice que nos comunicaremos solo si gana", () => {
   const { html, texto } = plantilla("confirmacion", "Ana");
-  assert.match(html, /Nos comunicaremos contigo/);
-  assert.match(texto, /Nos comunicaremos contigo/);
+  assert.match(html, /Si ganas, nos comunicaremos contigo/);
+  assert.match(texto, /Si ganas, nos comunicaremos contigo/);
 
   // La frase larga que la reemplazó no debe volver por un merge distraído.
   assert.ok(
@@ -193,4 +188,59 @@ test("primerNombre no deja el saludo vacío", () => {
   assert.equal(primerNombre("  Ana  "), "Ana");
   assert.equal(primerNombre(""), "hola");
   assert.equal(primerNombre("   "), "hola");
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// La jornada en el correo de confirmación.
+//
+// Con tres sorteos diarios, quien se inscribe el viernes a las 21:30 entra al
+// del SÁBADO. Sin esta línea se queda esperando el resultado del viernes, que ya
+// se hizo, y termina escribiendo para reclamar algo que nunca le correspondió.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const SORTEO_VIERNES = new Date("2026-08-21T21:00:00-04:00");
+
+/** La fecha se formatea en la zona del concurso, no en la del proceso. */
+function conZona<T>(fn: () => T): T {
+  const previo = process.env.CONCURSO_TZ;
+  process.env.CONCURSO_TZ = "America/Santiago";
+  try {
+    return fn();
+  } finally {
+    if (previo === undefined) delete process.env.CONCURSO_TZ;
+    else process.env.CONCURSO_TZ = previo;
+  }
+}
+
+test("la confirmación dice a qué sorteo entró la persona", () => {
+  const { html, texto, asunto } = conZona(() =>
+    plantilla("confirmacion", "Ana", SORTEO_VIERNES),
+  );
+
+  // Absoluta y no "hoy": el correo se abre horas después, puede que otro día.
+  assert.match(html, /Entras al sorteo del viernes 21 de agosto a las 21:00/);
+  assert.match(texto, /Entras al sorteo del viernes 21 de agosto a las 21:00/);
+  // Y sigue estando la frase que el equipo dejó escrita.
+  assert.match(html, /Si ganas, nos comunicaremos contigo/);
+  // El asunto no cambia: la fecha va en el cuerpo, no en la bandeja.
+  assert.equal(asunto, "Recibimos tu inscripción — Eau de Confianza");
+});
+
+test("sin instante de sorteo la confirmación no inventa una fecha", () => {
+  for (const sin of [undefined, null]) {
+    const { html, texto } = plantilla("confirmacion", "Ana", sin);
+    assert.doesNotMatch(html, /Entras al sorteo/);
+    assert.doesNotMatch(texto, /Entras al sorteo/);
+    // Y queda exactamente como antes de que existieran las jornadas.
+    assert.match(html, /Si ganas, nos comunicaremos contigo/);
+    assert.match(texto, /Si ganas, nos comunicaremos contigo/);
+  }
+});
+
+test("el correo de ganador no habla de la jornada", () => {
+  // Es la consecuencia del sorteo: decir cuándo fue no le aporta nada a quien
+  // ya sabe el resultado, y prometer una fecha de entrega es justo lo que no
+  // se puede hacer con la decisión 04 abierta.
+  const { html } = conZona(() => plantilla("ganador", "Ana", SORTEO_VIERNES));
+  assert.doesNotMatch(html, /Entras al sorteo/);
 });

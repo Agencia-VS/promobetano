@@ -59,6 +59,14 @@ export async function GET(request: NextRequest) {
     tipo: TipoCorreo;
     nombre: string;
     email: string;
+    /*
+     * Instante del sorteo de la jornada a la que entró la persona. Viene de la
+     * base y no del calendario de este proceso: el cron compone un correo para una
+     * fila que se encoló antes, y recalcular la jornada con el reloj de ahora daría
+     * la jornada equivocada para todo lo que quedó en la cola al pasar las 21:00.
+     * Null en los sorteos ad-hoc sin ventana; la plantilla omite la línea.
+     */
+    sorteo_at: string | null;
   }>;
 
   let enviados = 0;
@@ -70,7 +78,11 @@ export async function GET(request: NextRequest) {
    * marca en error y vuelve a la cola. En serie el lote tarda más pero llega.
    */
   for (const fila of filas) {
-    const { asunto, html, texto } = plantilla(fila.tipo, fila.nombre);
+    const { asunto, html, texto } = plantilla(
+      fila.tipo,
+      fila.nombre,
+      fila.sorteo_at ? new Date(fila.sorteo_at) : null,
+    );
     try {
       const { data, error: errEnvio } = await resend.emails.send({
         from,

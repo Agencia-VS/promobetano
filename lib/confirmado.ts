@@ -5,7 +5,17 @@ import { safeGetJSON, safeRemove, safeSetJSON } from "./storage.ts";
 
 const KEY = "edc_confirmado";
 
-export type Confirmado = { email: string; origen: string };
+export type Confirmado = {
+  email: string;
+  origen: string;
+  /**
+   * Etiqueta del sorteo al que entró («hoy a las 21:00»), tal como la devolvió
+   * el alta. Opcional a propósito: un payload guardado por una versión anterior
+   * no la trae, y quien lo tenga en sessionStorage no puede quedar expulsado de
+   * /listo por eso.
+   */
+  sorteo?: string;
+};
 
 const listeners = new Set<() => void>();
 
@@ -20,7 +30,14 @@ let cacheRaw: string | null = null;
 function esConfirmado(x: unknown): x is Confirmado {
   if (typeof x !== "object" || x === null) return false;
   const d = x as Record<string, unknown>;
-  return typeof d.email === "string" && typeof d.origen === "string";
+  return (
+    typeof d.email === "string" &&
+    typeof d.origen === "string" &&
+    // `sorteo` es opcional, pero si viene tiene que ser texto: sin este guard un
+    // valor raro se interpolaría en JSX y crashearía /listo, que es el defecto
+    // que ya ocurrió una vez con `email`.
+    (d.sorteo === undefined || typeof d.sorteo === "string")
+  );
 }
 
 function leer(): Confirmado | null {

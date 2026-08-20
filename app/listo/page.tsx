@@ -62,9 +62,21 @@ export default function ListoPage() {
               gap: 8,
             }}
           >
-            {/* TODO(§Qué falta 02): fecha del sorteo. */}
-            <InfoBadge label="Sorteo" value="Fecha por definir" pending />
-            {/* TODO(§Qué falta 03): premio. */}
+            {/*
+              A qué sorteo entró, tal como lo devolvió el alta. Hay un sorteo por
+              día a las 21:00, así que quien envía el formulario a las 21:30 entra
+              al del día siguiente: sin esta placa se queda esperando un resultado
+              que no le corresponde.
+
+              El respaldo "Fecha por definir" cubre el payload de una versión
+              anterior guardado en sessionStorage, no un dato que falte.
+            */}
+            <InfoBadge
+              label="Sorteo"
+              value={confirmado?.sorteo ?? "Fecha por definir"}
+              pending={!confirmado?.sorteo}
+            />
+            {/* TODO(decisión 03): el premio sigue sin definirse. */}
             <InfoBadge label="Premio" value="Por definir" pending />
           </div>
 

@@ -6,6 +6,7 @@ import { Badge18 } from "./Badge18";
 import { BetanoLogo } from "./Lockup";
 import { FormularioInscripcion } from "./FormularioInscripcion";
 import { PasosPerfume, SelloConfirmado } from "./Confirmacion";
+import { InfoBadge } from "./InfoBadge";
 import { CORREO_DATOS } from "@/lib/contacto";
 
 /**
@@ -23,6 +24,7 @@ import { CORREO_DATOS } from "@/lib/contacto";
 export function ContenidoModalInscripcion({ origen }: { origen: string }) {
   const router = useRouter();
   const [correo, setCorreo] = useState<string | null>(null);
+  const [sorteo, setSorteo] = useState<string | undefined>(undefined);
 
   if (correo !== null) {
     return (
@@ -32,6 +34,19 @@ export function ContenidoModalInscripcion({ origen }: { origen: string }) {
         </div>
 
         <PasosPerfume compacto />
+
+        {/* Las mismas placas que /listo: hay un sorteo por día, y quien se
+            inscribe después de las 21:00 entra al del día siguiente. Esta
+            superficie no puede callar lo que dice la otra. */}
+        <div style={estiloPlacas}>
+          <InfoBadge
+            label="Sorteo"
+            value={sorteo ?? "Fecha por definir"}
+            pending={!sorteo}
+          />
+          {/* Decisión 03 del brief: el premio sigue sin definirse. */}
+          <InfoBadge label="Premio" value="Por definir" pending />
+        </div>
 
         <p style={estiloTexto}>
           No revisamos tu bandeja de spam por ti. Si no llega, escríbenos a{" "}
@@ -78,7 +93,13 @@ export function ContenidoModalInscripcion({ origen }: { origen: string }) {
         </p>
       </div>
 
-      <FormularioInscripcion origen={origen} alExito={setCorreo} />
+      <FormularioInscripcion
+        origen={origen}
+        alExito={(email, jornada) => {
+          setSorteo(jornada);
+          setCorreo(email);
+        }}
+      />
 
       <p style={{ ...estiloTexto, fontSize: 11.5 }}>
         Juega con responsabilidad. Consultas de datos personales:{" "}
@@ -105,6 +126,13 @@ const estiloTitulo: React.CSSProperties = {
   letterSpacing: ".05em",
   textTransform: "uppercase",
   color: "#FFFFFF",
+};
+
+/* Dos columnas iguales, como en /listo: las dos placas son del mismo rango. */
+const estiloPlacas: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr",
+  gap: 8,
 };
 
 const estiloTexto: React.CSSProperties = {
