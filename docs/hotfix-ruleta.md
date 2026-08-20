@@ -34,18 +34,22 @@ nació.
 ## Orden de despliegue
 
 1. Crear un respaldo de la base de producción.
-2. Aplicar `supabase/migrations/20260820230000_ruleta_instantanea.sql`.
+2. Aplicar, en orden, estas migraciones:
+   - `supabase/migrations/20260820230000_ruleta_instantanea.sql`;
+   - `supabase/migrations/20260820233000_ruleta_pruebas_reales.sql`;
+   - `supabase/migrations/20260820234500_ruleta_configuracion_pruebas.sql`.
 3. Desplegar la aplicación de esta rama.
-4. Entrar a `/admin/ruleta` y revisar para cada jornada:
+4. Entrar a `/admin/ruleta` y revisar para cada jornada real:
    - apertura y cierre en hora de Chile;
    - modo automático;
    - `N inicial = 16`;
    - stock diario `0/30` y global `0/90`.
 5. En **Resumen**, dejar el interruptor de inscripciones en **Calendario**. Un
    override manual abierto o cerrado sigue teniendo prioridad operativa.
-6. Probar el flujo con el modo de pruebas y las identidades que muestra el
-   panel. El ensayo usa el N y los bloques configurados, numera a sus ganadores
-   como `PRUEBA 1`, `PRUEBA 2`… y encola el correo sin tomar stock ni folio real.
+6. En **Configuración de pruebas** de `/admin/ruleta`, definir su modo, N y
+   ventana simulada. El ensayo calcula su tendencia solo con altas de prueba,
+   numera a sus ganadores como `PRUEBA 1`, `PRUEBA 2`… y encola el correo sin
+   tomar stock, bloques ni folios reales.
 7. Imprimir desde `/admin/ruleta` la hoja de control 1–90.
 
 La migración va antes que el código para que la nueva RPC exista cuando llegue
@@ -54,9 +58,10 @@ no encola confirmaciones.
 
 ## Smoke test previo a apertura
 
-- Purgar cualquier ensayo anterior y, en `/admin/ruleta`, poner la próxima
-  jornada en modo manual con `N=1`. Así la primera inscripción de una prueba
-  limpia debe ganar; un bloque ya abierto conservaría su N anterior.
+- Purgar cualquier ensayo anterior y, en **Configuración de pruebas** de
+  `/admin/ruleta`, seleccionar modo manual con `N=1`. Así la primera
+  inscripción de una prueba limpia debe ganar sin tocar la configuración real;
+  un bloque de ensayo ya abierto conservaría su N anterior.
 - Abrir **Pruebas en producción** y completar una inscripción con la identidad
   de prueba que muestra el panel.
 - Confirmar que aparece primero la animación y después un resultado estable.
@@ -67,7 +72,9 @@ no encola confirmaciones.
 - Verificar que `/admin/ruleta` sigue mostrando `0/30` y `0/90` después de las
   pruebas.
 - Volver a purgar los datos de prueba desde **Resumen**.
-- Reactivar explícitamente el modo automático antes de abrir al público.
+- Dejar el simulador como se prefiera para futuras pruebas; su modo no cambia el
+  automático de las jornadas reales. Verificar por separado que las jornadas
+  reales sigan en Automático antes de abrir al público.
 
 ## Controles durante la activación
 

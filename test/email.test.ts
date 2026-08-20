@@ -132,10 +132,13 @@ test("el correo de ganador es un respaldo simple con su folio", () => {
     null,
     7,
   );
-  assert.match(asunto, /ganaste/i);
-  assert.match(html, /¡Ganaste!/);
-  assert.match(html, /acércate a la mesa de premiación/i);
-  assert.match(texto, /acércate a la mesa de premiación/i);
+  assert.match(asunto, /confiaste y ganaste/i);
+  assert.match(html, /¡Confiaste y ganaste!/);
+  assert.match(html, /si aún no has retirado tu premio/i);
+  assert.match(html, /acércate al stand de premiación/i);
+  assert.match(texto, /acércate al stand de premiación/i);
+  assert.match(html, /Si ya lo retiraste, puedes omitir este correo/i);
+  assert.match(texto, /Si ya lo retiraste, puedes omitir este correo/i);
   assert.match(html, /Número de ganador/);
   assert.match(html, /#007/);
   assert.match(texto, /Número de ganador: #007/);

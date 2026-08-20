@@ -13,9 +13,10 @@ export default async function AdminRuletaPage() {
   const { supabase, usuario } = await usuarioAdmin();
   if (!supabase || !usuario) redirect("/admin/login");
 
-  const [estado, ganadores] = await Promise.all([
+  const [estado, ganadores, pruebas] = await Promise.all([
     supabase.rpc("estado_ruleta_admin"),
     supabase.rpc("listar_ganadores_ruleta"),
+    supabase.rpc("estado_ruleta_pruebas_admin"),
   ]);
 
   const error = estado.error?.message ?? ganadores.error?.message ?? null;
@@ -40,6 +41,8 @@ export default async function AdminRuletaPage() {
           <PanelRuleta
             jornadas={(estado.data ?? []) as JornadaRuleta[]}
             ganadores={(ganadores.data ?? []) as GanadorRuleta[]}
+            pruebas={((pruebas.data ?? [])[0] ?? null) as JornadaRuleta | null}
+            pruebasNoDisponibles={Boolean(pruebas.error)}
           />
         )}
       </main>

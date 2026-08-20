@@ -173,8 +173,8 @@ export function ModoPruebas({
 
       <p className="estado__fuente">
         {activo
-          ? "El formulario está ensayando la ruleta con el N configurado. Usa bloques, números PRUEBA y correos aislados; no consume premios reales. Ciérralo antes de que abra el concurso."
-          : "Abre una jornada aislada que recorre la ruleta real con el N configurado. Sus ganadores reciben PRUEBA 1, PRUEBA 2… y correo de respaldo, sin tocar el stock 1–90."}
+          ? "El formulario está ensayando la ruleta con la configuración de pruebas de Ruleta. Usa bloques, números PRUEBA y correos aislados; no consume premios reales. Ciérralo antes de que abra el concurso."
+          : "Abre una jornada aislada que recorre la ruleta con la configuración de pruebas. Sus ganadores reciben PRUEBA 1, PRUEBA 2… y correo de respaldo, sin tocar el stock 1–90."}
       </p>
 
       {activo && !recibiendoAltas && (
@@ -199,9 +199,9 @@ export function ModoPruebas({
 
       <p className="estado__fuente" style={{ marginTop: 8 }}>
         El resultado no es 50/50: hay una posición ganadora aleatoria dentro de
-        cada bloque de N. Si cambias N en el panel, el valor nuevo comienza en el
-        siguiente bloque completo. El correo del ganador sale por la misma cola y
-        cron de producción, rotulado como prueba.
+        cada bloque de N. Si cambias el N de pruebas en el panel de Ruleta, el
+        valor nuevo comienza en el siguiente bloque completo. El correo del
+        ganador sale por la misma cola y cron de producción, rotulado como prueba.
       </p>
 
       <p className="estado__fuente" style={{ marginTop: 8 }}>

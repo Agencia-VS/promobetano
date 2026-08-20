@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export type JornadaRuleta = {
-  sorteo_id: number;
+  sorteo_id: number | null;
   clave: string | null;
   nombre: string;
   ventana_desde: string;
@@ -37,9 +37,13 @@ export type GanadorRuleta = {
 export function PanelRuleta({
   jornadas,
   ganadores,
+  pruebas,
+  pruebasNoDisponibles,
 }: {
   jornadas: JornadaRuleta[];
   ganadores: GanadorRuleta[];
+  pruebas: JornadaRuleta | null;
+  pruebasNoDisponibles: boolean;
 }) {
   const router = useRouter();
   const global = jornadas[0];
@@ -79,6 +83,35 @@ export function PanelRuleta({
           <Cifra valor={global.limite_total} nombre="Tope evento" />
         </div>
       </section>
+
+      <section className="no-imprimir" style={{ marginTop: 28 }}>
+        <div style={{ marginBottom: 12 }}>
+          <h2 className="tarjeta__titulo">Configuración de pruebas</h2>
+          <p className="adm__bajada">
+            Es el espejo aislado de la operación real: su tendencia, bloques,
+            ganadores y N no consumen ni modifican el stock 1–90.
+          </p>
+        </div>
+
+        {pruebas ? (
+          <div className="adm__rejilla">
+            <EditorJornada jornada={pruebas} esPrueba />
+          </div>
+        ) : (
+          <p className="aviso aviso--error">
+            {pruebasNoDisponibles
+              ? "El panel de pruebas aún no está disponible. Aplica la última migración de la ruleta y recarga."
+              : "No se encontró la configuración de pruebas."}
+          </p>
+        )}
+      </section>
+
+      <div className="no-imprimir" style={{ marginTop: 28, marginBottom: 12 }}>
+        <h2 className="tarjeta__titulo">Configuración real</h2>
+        <p className="adm__bajada">
+          Estas jornadas sí asignan stock y números de ganador correlativos.
+        </p>
+      </div>
 
       <div className="adm__rejilla no-imprimir">
         {jornadas.map((jornada) => (
@@ -141,7 +174,13 @@ export function PanelRuleta({
   );
 }
 
-function EditorJornada({ jornada }: { jornada: JornadaRuleta }) {
+function EditorJornada({
+  jornada,
+  esPrueba = false,
+}: {
+  jornada: JornadaRuleta;
+  esPrueba?: boolean;
+}) {
   const router = useRouter();
   const [modo, setModo] = useState(jornada.modo);
   const [n, setN] = useState(
@@ -159,17 +198,20 @@ function EditorJornada({ jornada }: { jornada: JornadaRuleta }) {
     setMensaje(null);
 
     try {
-      const respuesta = await fetch("/api/admin/ruleta", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          sorteo_id: jornada.sorteo_id,
-          modo,
-          n: Number(n),
-          ventana_desde: desde,
-          ventana_hasta: hasta,
-        }),
-      });
+      const respuesta = await fetch(
+        esPrueba ? "/api/admin/ruleta/pruebas" : "/api/admin/ruleta",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            ...(esPrueba ? {} : { sorteo_id: jornada.sorteo_id }),
+            modo,
+            n: Number(n),
+            ventana_desde: desde,
+            ventana_hasta: hasta,
+          }),
+        },
+      );
       const cuerpo = await respuesta.json().catch(() => ({}));
       if (!respuesta.ok) {
         throw new Error(
@@ -194,7 +236,11 @@ function EditorJornada({ jornada }: { jornada: JornadaRuleta }) {
         <span
           className={`pastilla ${jornada.abierta ? "pastilla--ganador" : "pastilla--suplente"}`}
         >
-          {jornada.abierta ? "Abierta" : "Fuera de horario"}
+          {jornada.abierta
+            ? esPrueba
+              ? "En ventana simulada"
+              : "Abierta"
+            : "Fuera de horario"}
         </span>
       </div>
 
@@ -271,9 +317,9 @@ function EditorJornada({ jornada }: { jornada: JornadaRuleta }) {
       </div>
 
       <p className="adm__bajada">
-        En automático, el sistema proyecta el ritmo observado para acercarse a
-        30 al cierre y puede bajar hasta N=1. Elegir manual detiene esos ajustes
-        hasta que vuelvas a seleccionar Automático.
+        {esPrueba
+          ? "En automático, este simulador usa solo el ritmo de las inscripciones de prueba para acercarse a 30 al cierre y puede bajar hasta N=1. No cambia N, bloques, stock ni folios reales. Abrir o cerrar las altas de ensayo sigue en Resumen."
+          : "En automático, el sistema proyecta el ritmo observado para acercarse a 30 al cierre y puede bajar hasta N=1. Elegir manual detiene esos ajustes hasta que vuelvas a seleccionar Automático."}
       </p>
 
       {mensaje && (

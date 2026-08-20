@@ -330,6 +330,10 @@ console.log("\n=== 8b. Portada y ruleta: ganador con folio ===");
   check((await p.locator("text=Panel por definir").count()) === 0, "ya no queda el placeholder de panel");
   check((await p.getByRole("heading", { name: /confía y participa por 1 de los 90 eau de confianza/i }).count()) === 1,
     "la portada muestra el nuevo titulo principal");
+  check((await p.locator("h1 + p", { hasText: "Hay un aroma para el momento en que decides confiar en ti" }).count()) === 1,
+    "la frase de aroma aparece como bajada inmediata del titulo");
+  check((await p.locator("text=Un perfume único en su tipo").count()) === 0,
+    "la portada ya no muestra el texto descriptivo eliminado");
 
   await p.goto(B + "/inscripcion", { waitUntil: "networkidle" });
   await p.fill("#f-nombre", "Ana Perez");

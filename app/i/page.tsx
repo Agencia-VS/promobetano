@@ -44,26 +44,9 @@ export default async function PortadaPage() {
             style={{ marginTop: 34, marginBottom: 8, display: "block" }}
           />
 
-          <p
-            style={{
-              margin: "26px 0 0",
-              fontFamily: "var(--font-title)",
-              fontWeight: 600,
-              fontSize: "clamp(11px, 1vw, 13px)",
-              lineHeight: 1.45,
-              letterSpacing: ".18em",
-              textTransform: "uppercase",
-              color: "rgba(255,255,255,.82)",
-              maxWidth: "42ch",
-              textWrap: "pretty",
-            }}
-          >
-            Hay un aroma para el momento en que decides confiar en ti
-          </p>
-
           <h1
             style={{
-              margin: "14px 0 0",
+              margin: "26px 0 0",
               fontFamily: "var(--font-title)",
               fontWeight: 800,
               fontSize: "clamp(27px, 3.45vw, 47px)",
@@ -79,15 +62,18 @@ export default async function PortadaPage() {
 
           <p
             style={{
-              margin: "26px 0 0",
-              fontSize: "clamp(15.5px, 1.15vw, 18px)",
-              lineHeight: 1.65,
-              color: "#FFFFFF",
-              maxWidth: "38ch",
+              margin: "16px 0 0",
+              fontFamily: "var(--font-title)",
+              fontWeight: 500,
+              fontSize: "clamp(13px, 1.05vw, 16px)",
+              lineHeight: 1.5,
+              letterSpacing: ".035em",
+              color: "rgba(255,255,255,.82)",
+              maxWidth: "42ch",
+              textWrap: "pretty",
             }}
           >
-            Un perfume único en su tipo, elaborado con aromas científicamente
-            comprobados para hacerte sentir más seguro.
+            Hay un aroma para el momento en que decides confiar en ti
           </p>
         </>
       }

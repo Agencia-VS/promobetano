@@ -307,19 +307,22 @@ function ganaste(
 </div>`
     : "";
   const lineaFolio = folio ? `\n${etiquetaFolio}: ${folio}.` : "";
+  const instruccion = `Si aún no has retirado tu premio, acércate al stand de premiación y presenta tu ${etiquetaFolio.toLowerCase()}. Si ya lo retiraste, puedes omitir este correo.`;
+  const instruccionPersonal = `${quien}, ${instruccion.replace(/^Si/, "si")}`;
+  const instruccionPersonalTexto = `${quienTexto}, ${instruccion.replace(/^Si/, "si")}`;
 
   return {
-    asunto: "¡Ganaste! — Eau de Confianza",
+    asunto: "¡Confiaste y ganaste! — Eau de Confianza",
     html: pieza(
-      `¡Ganaste! Acércate a la mesa de premiación.${folio ? ` Tu número es ${folio}.` : ""}`,
+      `¡Confiaste y ganaste! ${instruccion}${folio ? ` Tu número es ${folio}.` : ""}`,
       `${antetitulo("Resultado confirmado")}
-${titular("¡Ganaste!", MARCA.confianza)}
-<p style="margin:18px 0 0;font-size:16px;line-height:1.65;color:${CUERPO};">${quien}, acércate a la mesa de premiación y muestra tu pantalla de ganador.</p>
+${titular("¡Confiaste y ganaste!", MARCA.confianza)}
+<p style="margin:18px 0 0;font-size:16px;line-height:1.65;color:${CUERPO};">${instruccionPersonal}</p>
 ${bloqueFolio}`,
     ),
-    texto: `¡Ganaste!
+    texto: `¡Confiaste y ganaste!
 
-${quienTexto}, acércate a la mesa de premiación y muestra tu pantalla de ganador.${lineaFolio}
+${instruccionPersonalTexto}${lineaFolio}
 
 ${PIE_TEXTO}`,
   };
