@@ -78,10 +78,11 @@ function subscribe(cb: () => void) {
 /** En el servidor no hay sessionStorage: el snapshot es null y ambos lados coinciden. */
 const getServerSnapshot = (): Confirmado | null => null;
 
-export function guardaConfirmado(c: Confirmado): void {
-  safeSetJSON("session", KEY, c);
+export function guardaConfirmado(c: Confirmado): boolean {
+  const guardado = safeSetJSON("session", KEY, c);
   cacheRaw = null;
   for (const l of listeners) l();
+  return guardado;
 }
 
 export function borraConfirmado(): void {
