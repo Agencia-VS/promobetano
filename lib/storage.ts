@@ -23,7 +23,9 @@ export function safeGet(kind: Kind, key: string): string | null {
 
 export function safeSet(kind: Kind, key: string, value: string): boolean {
   try {
-    store(kind)?.setItem(key, value);
+    const storage = store(kind);
+    if (!storage) return false;
+    storage.setItem(key, value);
     return true;
   } catch {
     return false;

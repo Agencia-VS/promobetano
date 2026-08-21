@@ -377,6 +377,104 @@ console.log("\n=== 8c. Modo pruebas: correlativo aislado ===");
   await ctx.close();
 }
 
+console.log("\n=== 8d. Resultado resiliente en celulares ===");
+{
+  // Algunos WebViews permiten navegar pero bloquean sessionStorage. El alta ya
+  // quedó resuelta, así que el resultado debe revelarse en esta misma ruta.
+  const { ctx, p } = await nueva({
+    status: 201,
+    body: { ok: true, ganador: true, numero_ganador: 18, pruebas: false },
+  });
+  await p.addInitScript(() => {
+    Object.defineProperty(window, "sessionStorage", {
+      configurable: true,
+      get() {
+        throw new DOMException("Storage bloqueado", "SecurityError");
+      },
+    });
+  });
+  await p.goto(B + "/edad?next=%2Finscripcion", { waitUntil: "domcontentloaded" });
+  await p.getByRole("button", { name: /tengo 18/i }).click();
+  await p.waitForURL("**/inscripcion", { timeout: 5000 });
+  await p.fill("#f-nombre", "Ana Perez");
+  await p.fill("#f-email", "ana@correo.cl");
+  await p.fill("#f-tel", "87654321");
+  await p.fill("#f-rut", "12.345.678-5");
+  await p.locator('input[type=checkbox]').nth(0).check();
+  await p.locator('input[type=checkbox]').nth(1).check();
+  await p.click('button[type=submit]');
+  await p.waitForSelector("text=Girando la ruleta", { timeout: 5000 });
+
+  check(
+    new URL(p.url()).pathname === "/inscripcion",
+    `sin sessionStorage no navega a una ruta sin resultado (${new URL(p.url()).pathname})`,
+  );
+  check(
+    (await p.locator("text=Girando la ruleta").count()) > 0,
+    "sin sessionStorage igual comienza la ruleta",
+  );
+  await p.waitForTimeout(3100);
+  check((await p.locator("text=¡Ganaste!").count()) > 0, "sin sessionStorage revela el ganador");
+  check((await p.locator("text=#018").count()) > 0, "sin sessionStorage conserva el folio");
+  await ctx.close();
+}
+
+{
+  // Si el 201 llega cortado, el primer intento puede haber quedado confirmado
+  // en la base. Se repite el MISMO request_id para recuperar esa decisión.
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const requestIds = [];
+  let intento = 0;
+  await ctx.route("**/api/inscripcion", (route) => {
+    requestIds.push(JSON.parse(route.request().postData() ?? "{}").request_id);
+    intento++;
+    if (intento === 1) {
+      return route.fulfill({
+        status: 201,
+        contentType: "application/json",
+        body: "{",
+      });
+    }
+    return route.fulfill({
+      status: 201,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ok: true,
+        ganador: true,
+        numero_ganador: 19,
+        pruebas: false,
+      }),
+    });
+  });
+  const p = await ctx.newPage();
+  await p.goto(B + "/edad?next=%2Finscripcion", { waitUntil: "domcontentloaded" });
+  await p.getByRole("button", { name: /tengo 18/i }).click();
+  await p.waitForURL("**/inscripcion", { timeout: 5000 });
+  await p.fill("#f-nombre", "Ana Perez");
+  await p.fill("#f-email", "ana@correo.cl");
+  await p.fill("#f-tel", "87654321");
+  await p.fill("#f-rut", "12.345.678-5");
+  await p.locator('input[type=checkbox]').nth(0).check();
+  await p.locator('input[type=checkbox]').nth(1).check();
+  await p.click('button[type=submit]');
+  await p.waitForTimeout(400);
+
+  check(new URL(p.url()).pathname === "/inscripcion", "un 201 incompleto no se muestra como perdedor");
+  check(
+    (await p.locator("text=No pudimos confirmar tu resultado").count()) > 0,
+    "el 201 incompleto pide recuperar el resultado",
+  );
+  await p.getByRole("button", { name: /reintentar/i }).click();
+  await p.waitForURL("**/listo", { timeout: 5000 });
+  check(
+    requestIds.length === 2 && requestIds[0] === requestIds[1],
+    "el reintento conserva el mismo request_id",
+  );
+  await p.waitForTimeout(3100);
+  check((await p.locator("text=#019").count()) > 0, "el reintento recupera el folio original");
+  await ctx.close();
+}
+
 console.log("\n=== 9. /bases existe y es alcanzable sin puerta ===");
 {
   const { ctx, p } = await nueva();

@@ -23,6 +23,8 @@ import {
   type InscripcionValues,
 } from "@/lib/inscripcion";
 import { guardaConfirmado, type Confirmado } from "@/lib/confirmado";
+import { confirmaResultado } from "@/lib/resultado-inscripcion";
+import { ResultadoRuleta } from "./ResultadoRuleta";
 
 const CAMPOS_TEXTO: CampoTexto[] = ["nombre", "email", "tel", "rut"];
 const DEBOUNCE_MS = 400;
@@ -97,6 +99,9 @@ export function FormularioInscripcion({
   // Fallo del envío, distinto de los errores por campo: no lo produce un dato
   // malo sino la red o el servidor, y se resuelve reintentando.
   const [falla, setFalla] = useState<string | null>(null);
+  // Respaldo para navegadores que bloquean Web Storage: el resultado ya está
+  // resuelto en la base y se revela acá, sin depender de navegar a /listo.
+  const [resultadoLocal, setResultadoLocal] = useState<Confirmado | null>(null);
   const formulario = useRef<HTMLFormElement | null>(null);
 
   const pendiente = useRef<InscripcionValues | null>(null);
@@ -227,36 +232,28 @@ export function FormularioInscripcion({
       });
 
       if (r.ok) {
-        const correo = v.email.trim();
         /*
          * A qué sorteo entró, tal como lo devolvió el servidor. Se guarda en vez
          * de recalcularlo en /listo porque el instante que importa es el del
          * envío: quien manda el formulario a las 20:59:59 entra al sorteo de
          * esta noche, y recalcularlo dos segundos después diría el de mañana.
          */
-        const cuerpo = (await r.json().catch(() => ({}))) as {
-          sorteo?: unknown;
-          pruebas?: unknown;
-          ganador?: unknown;
-          numero_ganador?: unknown;
-        };
-        const sorteo = typeof cuerpo.sorteo === "string" ? cuerpo.sorteo : undefined;
-        const pruebas = cuerpo.pruebas === true;
-        const ganador = cuerpo.ganador === true;
-        const numeroGanador =
-          typeof cuerpo.numero_ganador === "number" &&
-          Number.isInteger(cuerpo.numero_ganador)
-            ? cuerpo.numero_ganador
-            : undefined;
-        const confirmado: Confirmado = {
-          email: correo,
+        const cuerpo = await r.json().catch(() => null);
+        const confirmado = confirmaResultado(cuerpo, {
+          email: v.email,
           origen,
-          sorteo,
-          pruebas,
-          ganador,
-          numeroGanador,
-        };
-        guardaConfirmado(confirmado);
+        });
+        if (!confirmado) {
+          // No se inventa un resultado. El request_id queda intacto: al tocar
+          // de nuevo, la RPC devuelve la decisión que ya dejó persistida.
+          setFalla(
+            "No pudimos confirmar tu resultado. Toca de nuevo: tu inscripción no se duplicará.",
+          );
+          setEnviando(false);
+          return;
+        }
+
+        const guardado = guardaConfirmado(confirmado);
         pendiente.current = null;
         borraDraft();
         // Sin apagar `enviando`: tanto la navegación como el cambio de
@@ -264,6 +261,10 @@ export function FormularioInscripcion({
         // acá solo abre una ventana para un segundo submit.
         if (alExito) {
           alExito(confirmado);
+          return;
+        }
+        if (!guardado) {
+          setResultadoLocal(confirmado);
           return;
         }
         router.push("/listo");
@@ -280,6 +281,10 @@ export function FormularioInscripcion({
       setFalla("No pudimos conectar. Revisa tu señal y toca de nuevo.");
     }
     setEnviando(false);
+  }
+
+  if (resultadoLocal) {
+    return <ResultadoRuleta resultado={resultadoLocal} />;
   }
 
   return (
